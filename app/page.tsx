@@ -1,47 +1,143 @@
-export default function Page() {
+import Link from 'next/link'
+import { ArrowRight, Eye, ListChecks, Wind } from 'lucide-react'
+import { SiteHeader } from '@/components/site-header'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { sampleLeagues } from '@/lib/sample-data'
+
+const FEATURES = [
+  {
+    icon: Wind,
+    title: 'Punters as a category',
+    body: 'Sleeper owns your rosters and standard scoring. This tracks the one thing it can\u2019t: NFL punters as a real fantasy position.',
+  },
+  {
+    icon: ListChecks,
+    title: 'Data-driven scoring',
+    body: 'Point values live in configuration, not code. Change a rule and choose to recalculate past weeks or apply it going forward.',
+  },
+  {
+    icon: Eye,
+    title: 'Fully public & auditable',
+    body: 'Everyone can view everything without logging in. Every commissioner action is permanently recorded in the audit log.',
+  },
+]
+
+export default function HomePage() {
   return (
-    <main
-      style={{
-        colorScheme: 'light dark',
-        position: 'relative',
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'light-dark(#fff, #000)',
-        color: 'light-dark(#000, #fff)',
-      }}
-    >
-      <svg
-        aria-hidden="true"
-        style={{ width: 80, height: 80 }}
-        width={80}
-        height={80}
-        fill="none"
-        viewBox="0 0 20 20"
-        xmlns="http://www.w3.org/2000/svg"
-        stroke="currentColor"
-        strokeWidth="0.5"
-      >
-        <path
-          d="M14.2 14.2H17V6.9375C17 4.76288 15.2371 3 13.0625 3H5.8V5.8M14.2 14.2V7.79063L7.79062 14.2H14.2ZM14.2 14.2V17H6.9375C4.76288 17 3 15.2371 3 13.0625V5.8H5.8M5.8 5.8V12.2313L12.2313 5.8H5.8Z"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <p
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: 'calc(50% + 56px)',
-          transform: 'translateX(-50%)',
-          whiteSpace: 'nowrap',
-          fontSize: '14px',
-          fontWeight: 500,
-          color: 'light-dark(#71717a, #a1a1aa)',
-        }}
-      >
-        Your v0 generation will show here.
-      </p>
-    </main>
+    <div className="flex min-h-svh flex-col">
+      <SiteHeader />
+
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="border-b border-border">
+          <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+            <div className="flex max-w-2xl flex-col gap-6">
+              <Badge variant="secondary" className="w-fit">
+                Sleeper Companion
+              </Badge>
+              <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
+                Oops, all punters.
+              </h1>
+              <p className="text-lg leading-relaxed text-muted-foreground text-pretty">
+                A companion for your Sleeper league that tracks NFL punters as a
+                standalone scoring category — assignments, trades, weekly
+                imports, and live standings, all publicly auditable.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  size="lg"
+                  render={
+                    <Link href={`/league/${sampleLeagues[0].slug}`} />
+                  }
+                >
+                  View a league
+                  <ArrowRight data-icon="inline-end" />
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  render={<Link href="/dashboard" />}
+                >
+                  Commissioner sign in
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            {FEATURES.map((f) => (
+              <Card key={f.title}>
+                <CardHeader>
+                  <span className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <f.icon className="size-5" />
+                  </span>
+                  <CardTitle className="mt-3">{f.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                    {f.body}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* League directory */}
+        <section className="border-t border-border">
+          <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
+            <h2 className="text-xl font-semibold tracking-tight">Leagues</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Public read access — no account required.
+            </p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {sampleLeagues.map((league) => (
+                <Card key={league.id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle>{league.name}</CardTitle>
+                      <Badge variant="secondary">{league.season}</Badge>
+                    </div>
+                    <CardDescription>
+                      punterleague.com/league/{league.slug}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      render={<Link href={`/league/${league.slug}`} />}
+                    >
+                      Open league
+                      <ArrowRight data-icon="inline-end" />
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+          <p className="text-xs text-muted-foreground">
+            Not affiliated with Sleeper. A companion tool for punter-only side
+            competitions.
+          </p>
+        </div>
+      </footer>
+    </div>
   )
 }
