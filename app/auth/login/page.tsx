@@ -90,6 +90,7 @@ export default function LoginPage() {
             variant="ghost"
             size="sm"
             className="w-full"
+            nativeButton={false}
             render={<Link href="/" />}
           >
             <ArrowLeft data-icon="inline-start" />

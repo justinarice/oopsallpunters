@@ -38,6 +38,7 @@ export default async function LeagueHomePage({
               <Button
                 variant="ghost"
                 size="sm"
+                nativeButton={false}
                 render={<Link href={`/league/${slug}/standings`} />}
               >
                 Full standings
@@ -108,6 +109,7 @@ export default async function LeagueHomePage({
               <Button
                 variant="ghost"
                 size="sm"
+                nativeButton={false}
                 render={<Link href={`/league/${slug}/transactions`} />}
               >
                 View all

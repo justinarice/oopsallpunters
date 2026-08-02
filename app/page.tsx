@@ -54,6 +54,7 @@ export default function HomePage() {
               <div className="flex flex-wrap gap-3">
                 <Button
                   size="lg"
+                  nativeButton={false}
                   render={
                     <Link href={`/league/${sampleLeagues[0].slug}`} />
                   }
@@ -64,6 +65,7 @@ export default function HomePage() {
                 <Button
                   size="lg"
                   variant="outline"
+                  nativeButton={false}
                   render={<Link href="/dashboard" />}
                 >
                   Commissioner sign in
@@ -117,6 +119,7 @@ export default function HomePage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      nativeButton={false}
                       render={<Link href={`/league/${league.slug}`} />}
                     >
                       Open league
