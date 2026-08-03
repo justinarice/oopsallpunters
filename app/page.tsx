@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Eye, ListChecks, Wind } from 'lucide-react'
+import { ArrowRight, Eye, ListChecks, SportShoe, Wind } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import {
   Card,
@@ -44,7 +44,8 @@ export default async function HomePage() {
         <section className="border-b border-border">
           <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
             <div className="flex max-w-2xl flex-col gap-6">
-              <Badge variant="secondary" className="w-fit">
+              <Badge variant="secondary" className="w-fit gap-1.5">
+                <SportShoe className="size-3.5" />
                 Sleeper Companion
               </Badge>
               <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
