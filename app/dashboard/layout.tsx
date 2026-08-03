@@ -43,6 +43,7 @@ export default async function DashboardLayout({
             <Button
               variant="ghost"
               size="sm"
+              nativeButton={false}
               render={<Link href="/" />}
               className="hidden sm:inline-flex"
             >

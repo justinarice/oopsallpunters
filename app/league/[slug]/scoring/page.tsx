@@ -10,13 +10,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  MODIFIER_LABELS,
-  STAT_LABELS,
-  sampleScoringRules,
-} from '@/lib/sample-data'
+import { notFound } from 'next/navigation'
+import { MODIFIER_LABELS, STAT_LABELS } from '@/lib/sample-data'
+import { getLeagueBySlug, getScoringRules } from '@/lib/queries'
 
-export default function ScoringPage() {
+export default async function ScoringPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) notFound()
+  const scoringRules = await getScoringRules(league.id)
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -46,7 +53,17 @@ export default function ScoringPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sampleScoringRules.map((rule) => (
+            {scoringRules.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={3}
+                  className="py-8 text-center text-sm text-muted-foreground"
+                >
+                  No scoring rules configured yet.
+                </TableCell>
+              </TableRow>
+            )}
+            {scoringRules.map((rule) => (
               <TableRow key={rule.id}>
                 <TableCell className="font-medium">
                   {STAT_LABELS[rule.stat] ?? rule.stat}

@@ -17,6 +17,7 @@ export function SiteHeader() {
         <Button
           variant="outline"
           size="sm"
+          nativeButton={false}
           render={<Link href="/dashboard" />}
         >
           <Shield data-icon="inline-start" />

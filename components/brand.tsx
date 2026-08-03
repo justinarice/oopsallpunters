@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { SportShoe } from 'lucide-react';
 
 /**
  * Brand mark: a stylized punt arc inside a rounded badge, plus the wordmark.
@@ -13,19 +14,7 @@ export function BrandMark({ className }: { className?: string }) {
       )}
       aria-hidden="true"
     >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="size-5"
-      >
-        <path d="M3 20c4-11 14-11 18 0" />
-        <circle cx="3" cy="20" r="1.4" fill="currentColor" stroke="none" />
-        <path d="M14.5 5.5l4 4" />
-      </svg>
+<SportShoe />
     </span>
   )
 }

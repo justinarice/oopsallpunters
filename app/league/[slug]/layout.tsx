@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { SiteHeader } from '@/components/site-header'
 import { LeagueNav } from '@/components/league-nav'
-import { sampleLeagues } from '@/lib/sample-data'
+import { getLeagueBySlug } from '@/lib/queries'
 
 export default async function LeagueLayout({
   children,
@@ -13,9 +13,7 @@ export default async function LeagueLayout({
 }) {
   const { slug } = await params
 
-  // Phase 1: resolved from sample data. Later this becomes a Supabase query
-  // (select ... from leagues where slug = ...), returning notFound() when absent.
-  const league = sampleLeagues.find((l) => l.slug === slug)
+  const league = await getLeagueBySlug(slug)
   if (!league) notFound()
 
   return (

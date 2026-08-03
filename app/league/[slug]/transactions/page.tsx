@@ -6,9 +6,10 @@ import {
   Flag,
   Lock,
 } from 'lucide-react'
+import { notFound } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { sampleAuditLog } from '@/lib/sample-data'
+import { getAuditLog, getLeagueBySlug } from '@/lib/queries'
 import { formatDateTime } from '@/lib/format'
 
 function iconFor(action: string) {
@@ -21,7 +22,16 @@ function iconFor(action: string) {
   return Settings2
 }
 
-export default function TransactionsPage() {
+export default async function TransactionsPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) notFound()
+  const auditLog = await getAuditLog(league.id)
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -43,9 +53,14 @@ export default function TransactionsPage() {
 
       <Card>
         <CardContent className="flex flex-col">
-          {sampleAuditLog.map((entry, i) => {
+          {auditLog.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No commissioner actions recorded yet.
+            </p>
+          )}
+          {auditLog.map((entry, i) => {
             const Icon = iconFor(entry.action)
-            const last = i === sampleAuditLog.length - 1
+            const last = i === auditLog.length - 1
             return (
               <div key={entry.id} className="flex gap-4">
                 <div className="flex flex-col items-center">

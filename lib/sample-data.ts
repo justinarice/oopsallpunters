@@ -23,6 +23,8 @@ export const sampleLeague: League = {
   slug: 'oops-all-punters',
   season: '2026',
   commissioner_id: 'usr_commish',
+  logo_url: null,
+  announcement: null,
   created_at: '2026-07-01T12:00:00Z',
 }
 
@@ -34,6 +36,8 @@ export const sampleLeagues: League[] = [
     slug: 'coffin-corner-club',
     season: '2026',
     commissioner_id: 'usr_commish',
+    logo_url: null,
+    announcement: null,
     created_at: '2026-06-14T09:30:00Z',
   },
 ]
