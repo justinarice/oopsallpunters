@@ -33,7 +33,7 @@ export function CreateLeague() {
   )
 
   return (
-    <Card className="mx-auto max-w-md">
+    <Card className="mx-auto w-full max-w-md">
       <CardHeader>
         <CardTitle>Create your league</CardTitle>
         <CardDescription>
