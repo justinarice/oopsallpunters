@@ -37,6 +37,8 @@ export interface League {
   slug: string
   season: string
   commissioner_id: string
+  logo_url: string | null
+  announcement: string | null
   created_at: string
 }
 

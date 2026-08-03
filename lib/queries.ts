@@ -32,6 +32,28 @@ export async function getLeagues(): Promise<League[]> {
   return data ?? []
 }
 
+/**
+ * Leagues where the current signed-in user is the commissioner. Used by the
+ * dashboard. Returns [] for anonymous users.
+ */
+export async function getMyLeagues(): Promise<League[]> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data, error } = await supabase
+    .from("leagues")
+    .select("*")
+    .eq("commissioner_id", user.id)
+    .order("created_at", { ascending: false })
+  if (error) {
+    console.error("[v0] getMyLeagues error:", error.message)
+    return []
+  }
+  return data ?? []
+}
+
 export async function getLeagueBySlug(slug: string): Promise<League | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -298,8 +320,9 @@ export async function getWeeklyResults(
   const teamByPunter = new Map<string, Team>()
   for (const a of assignments) teamByPunter.set(a.punter.id, a.team)
 
-  const statByKey = new Map<string, (typeof stats)[number]>()
-  for (const st of stats ?? [])
+  type StatRow = Record<string, unknown>
+  const statByKey = new Map<string, StatRow>()
+  for (const st of (stats ?? []) as StatRow[])
     statByKey.set(`${st.week}:${st.player_id}`, st)
 
   const rowsByWeek: Record<number, WeeklyResultRow[]> = {}
@@ -311,22 +334,23 @@ export async function getWeeklyResults(
     if (!punter) continue
     const st = statByKey.get(`${week}:${punter.player_id}`)
     const owner = teamByPunter.get(punter.id)
+    const num = (v: unknown) => (v == null ? 0 : Number(v))
     rowsByWeek[week].push({
       id: `${week}:${punter.id}`,
       week,
       season,
       player_id: punter.player_id,
-      attempts: (st?.attempts as number) ?? 0,
-      gross_yards: (st?.gross_yards as number) ?? 0,
-      net_yards: (st?.net_yards as number) ?? 0,
-      average: st?.average != null ? Number(st.average) : 0,
-      longest: (st?.longest as number) ?? 0,
-      inside_20: (st?.inside_20 as number) ?? 0,
-      touchbacks: (st?.touchbacks as number) ?? 0,
-      fair_catches: (st?.fair_catches as number) ?? 0,
-      returned: (st?.returned as number) ?? 0,
-      return_yards: (st?.return_yards as number) ?? 0,
-      blocked: (st?.blocked as number) ?? 0,
+      attempts: num(st?.attempts),
+      gross_yards: num(st?.gross_yards),
+      net_yards: num(st?.net_yards),
+      average: num(st?.average),
+      longest: num(st?.longest),
+      inside_20: num(st?.inside_20),
+      touchbacks: num(st?.touchbacks),
+      fair_catches: num(st?.fair_catches),
+      returned: num(st?.returned),
+      return_yards: num(st?.return_yards),
+      blocked: num(st?.blocked),
       surrender_index:
         st?.surrender_index != null ? Number(st.surrender_index) : null,
       source_import_id: (st?.source_import_id as string) ?? "",
@@ -335,9 +359,6 @@ export async function getWeeklyResults(
       points: Number(s.points) || 0,
     })
   }
-
-  // keep punterByPlayerId referenced for potential future use
-  void punterByPlayerId
 
   for (const w of weeks)
     rowsByWeek[w].sort((a, b) => b.points - a.points)

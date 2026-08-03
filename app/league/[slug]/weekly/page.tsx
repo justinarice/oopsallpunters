@@ -1,15 +1,20 @@
+import { notFound } from 'next/navigation'
 import { WeeklyResults } from '@/components/weekly-results'
-import { availableWeeks, sampleWeeklyStats } from '@/lib/sample-data'
+import { getLeagueBySlug, getWeeklyResults } from '@/lib/queries'
 
-export default function WeeklyPage() {
-  // Group stats by week. Only Week 3 has sample data; other weeks render the
-  // empty state, demonstrating the "not imported yet" path.
-  const rowsByWeek: Record<number, typeof sampleWeeklyStats> = {}
-  for (const w of availableWeeks) rowsByWeek[w] = []
-  for (const row of sampleWeeklyStats) {
-    rowsByWeek[row.week] = rowsByWeek[row.week] ?? []
-    rowsByWeek[row.week].push(row)
-  }
+export default async function WeeklyPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) notFound()
+
+  const { weeks, rowsByWeek } = await getWeeklyResults(
+    league.id,
+    league.season,
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -19,7 +24,7 @@ export default function WeeklyPage() {
           Every punter&apos;s stats and calculated fantasy points, by week.
         </p>
       </div>
-      <WeeklyResults weeks={availableWeeks} rowsByWeek={rowsByWeek} />
+      <WeeklyResults weeks={weeks} rowsByWeek={rowsByWeek} />
     </div>
   )
 }
