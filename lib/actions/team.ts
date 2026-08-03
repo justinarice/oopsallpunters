@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { logAction, requireCommissioner } from "@/lib/actions/guard"
-import type { ActionResult } from "@/lib/actions/league"
+import type { ActionResult } from "@/lib/actions/guard"
 
 const createSchema = z.object({
   leagueId: z.string().uuid(),
