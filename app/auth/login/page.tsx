@@ -3,7 +3,6 @@
 import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -19,7 +18,6 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Wordmark } from "@/components/brand"
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -36,7 +34,14 @@ export default function LoginPage() {
         password,
       })
       if (error) throw error
-      router.push("/dashboard")
+      // Use a hard navigation instead of router.push. The auth cookies set by
+      // signInWithPassword need to be present on the *next* request for the
+      // middleware (updateSession) to recognize the session. A client-side
+      // router.push can fire before those cookies are reliably readable,
+      // causing the middleware to bounce back to /auth/login (looks like a
+      // hang, then requires a second sign-in attempt). A full navigation
+      // guarantees the browser sends the fresh cookies with the request.
+      window.location.href = "/dashboard"
     } catch (err: unknown) {
       console.error("[v0] Login error:", err)
       const { code } = (err ?? {}) as { code?: string }
