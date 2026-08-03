@@ -8,9 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Empty, EmptyDescription, EmptyTitle } from '@/components/ui/empty'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { sampleLeagues } from '@/lib/sample-data'
+import { getLeagues } from '@/lib/queries'
 
 const FEATURES = [
   {
@@ -30,7 +31,10 @@ const FEATURES = [
   },
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const leagues = await getLeagues()
+  const primarySlug = leagues[0]?.slug
+
   return (
     <div className="flex min-h-svh flex-col">
       <SiteHeader />
@@ -52,16 +56,16 @@ export default function HomePage() {
                 imports, and live standings, all publicly auditable.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button
-                  size="lg"
-                  nativeButton={false}
-                  render={
-                    <Link href={`/league/${sampleLeagues[0].slug}`} />
-                  }
-                >
-                  View a league
-                  <ArrowRight data-icon="inline-end" />
-                </Button>
+                {primarySlug && (
+                  <Button
+                    size="lg"
+                    nativeButton={false}
+                    render={<Link href={`/league/${primarySlug}`} />}
+                  >
+                    View a league
+                    <ArrowRight data-icon="inline-end" />
+                  </Button>
+                )}
                 <Button
                   size="lg"
                   variant="outline"
@@ -103,32 +107,50 @@ export default function HomePage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Public read access — no account required.
             </p>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {sampleLeagues.map((league) => (
-                <Card key={league.id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between gap-2">
-                      <CardTitle>{league.name}</CardTitle>
-                      <Badge variant="secondary">{league.season}</Badge>
-                    </div>
-                    <CardDescription>
-                      punterleague.com/league/{league.slug}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      nativeButton={false}
-                      render={<Link href={`/league/${league.slug}`} />}
-                    >
-                      Open league
-                      <ArrowRight data-icon="inline-end" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            {leagues.length === 0 ? (
+              <Empty className="mt-6 rounded-lg border border-dashed border-border">
+                <EmptyTitle>No leagues yet</EmptyTitle>
+                <EmptyDescription>
+                  A commissioner needs to sign in and create the first league.
+                </EmptyDescription>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  nativeButton={false}
+                  render={<Link href="/dashboard" />}
+                >
+                  Commissioner sign in
+                </Button>
+              </Empty>
+            ) : (
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                {leagues.map((league) => (
+                  <Card key={league.id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between gap-2">
+                        <CardTitle>{league.name}</CardTitle>
+                        <Badge variant="secondary">{league.season}</Badge>
+                      </div>
+                      <CardDescription>
+                        /league/{league.slug}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        nativeButton={false}
+                        render={<Link href={`/league/${league.slug}`} />}
+                      >
+                        Open league
+                        <ArrowRight data-icon="inline-end" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         </section>
       </main>

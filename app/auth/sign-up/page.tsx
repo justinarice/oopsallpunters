@@ -18,33 +18,60 @@ import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Wordmark } from "@/components/brand"
 
-export default function LoginPage() {
+// Supabase does not reveal whether an email is already registered, so the
+// fallback stays generic. Validation failures describe the user's own input and
+// are not an enumeration oracle, so surface them.
+function signUpErrorMessage(error: unknown): string {
+  const { code, status } = (error ?? {}) as { code?: string; status?: number }
+  if (code === "weak_password") return "Please choose a stronger password."
+  if (code === "email_address_invalid")
+    return "Please use a real email address — example and test domains are not supported."
+  if (code === "email_address_not_authorized")
+    return "We cannot send confirmation email to that address. Please use a different one."
+  if (code === "validation_failed")
+    return "Please check the details you entered."
+  if (code === "over_email_send_rate_limit" || status === 429)
+    return "Too many attempts. Please wait a moment and try again."
+  return "Unable to complete sign-up. Please try again."
+}
+
+export default function SignUpPage() {
   const router = useRouter()
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [repeatPassword, setRepeatPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
+
+    if (password !== repeatPassword) {
+      setError("Passwords do not match.")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo:
+            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+            `${window.location.origin}/auth/callback`,
+          data: { name },
+        },
       })
       if (error) throw error
-      router.push("/dashboard")
+      router.push("/auth/sign-up-success")
     } catch (err: unknown) {
-      console.error("[v0] Login error:", err)
-      const { code } = (err ?? {}) as { code?: string }
-      if (code === "email_not_confirmed") {
-        setError("Please confirm your email address before signing in.")
-      } else {
-        setError("Invalid email or password.")
-      }
+      console.error("[v0] Sign-up error:", err)
+      setError(signUpErrorMessage(err))
       setIsLoading(false)
     }
   }
@@ -56,15 +83,26 @@ export default function LoginPage() {
       </Link>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Commissioner sign in</CardTitle>
+          <CardTitle className="text-xl">Create commissioner account</CardTitle>
           <CardDescription>
-            Only commissioners sign in. Everyone else views the league without
-            an account.
+            Sign up to run a league. Members never need an account.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <form onSubmit={handleLogin}>
+          <form onSubmit={handleSignUp}>
             <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="name">Display name</FieldLabel>
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Commish"
+                  autoComplete="name"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Field>
               <Field>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
@@ -82,25 +120,38 @@ export default function LoginPage() {
                 <Input
                   id="password"
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </Field>
+              <Field>
+                <FieldLabel htmlFor="repeat-password">
+                  Repeat password
+                </FieldLabel>
+                <Input
+                  id="repeat-password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={repeatPassword}
+                  onChange={(e) => setRepeatPassword(e.target.value)}
+                />
+              </Field>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Signing in…" : "Sign in"}
+                {isLoading ? "Creating account…" : "Sign up"}
               </Button>
             </FieldGroup>
           </form>
           <p className="text-center text-sm text-muted-foreground">
-            Need a commissioner account?{" "}
+            Already have an account?{" "}
             <Link
-              href="/auth/sign-up"
+              href="/auth/login"
               className="text-foreground underline underline-offset-4"
             >
-              Sign up
+              Sign in
             </Link>
           </p>
           <Button

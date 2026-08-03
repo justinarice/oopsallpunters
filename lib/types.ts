@@ -155,3 +155,27 @@ export interface StandingRow {
   rank: number
   lastWeekPoints: number | null
 }
+
+/** Active roster assignment joined with its team and punter. */
+export interface AssignmentView {
+  id: string
+  team: Team
+  punter: Punter
+  assigned_at: string
+}
+
+/** Trade row with resolved team/punter names for public display. */
+export interface TradeView {
+  id: string
+  date: string
+  from_team: string | null
+  to_team: string
+  punter: string
+  notes: string | null
+}
+
+/** A punter joined with its current owner (if any) in a given league. */
+export interface PunterWithOwner {
+  punter: Punter
+  ownerTeam: Team | null
+}
