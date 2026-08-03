@@ -9,8 +9,6 @@ import {
   type ActionResult,
 } from "@/lib/actions/guard"
 
-export type { ActionResult }
-
 const slugify = (s: string) =>
   s
     .toLowerCase()
