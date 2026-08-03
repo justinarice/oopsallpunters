@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, Eye, ListChecks, SportShoe, Wind } from 'lucide-react'
+import { ArrowRight, Eye, ListChecks, Wind } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import {
   Card,
