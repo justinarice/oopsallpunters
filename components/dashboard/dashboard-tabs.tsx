@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import type { League, PunterWithOwner, Team } from "@/lib/types"
 import { SettingsSection } from "./settings-section"
+import { SleeperSection } from "./sleeper-section"
 import { TeamsSection } from "./teams-section"
 import { RosterSection } from "./roster-section"
 
@@ -45,8 +46,9 @@ export function DashboardTabs({
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="settings" className="mt-6">
+      <TabsContent value="settings" className="mt-6 flex flex-col gap-6">
         <SettingsSection league={league} />
+        <SleeperSection league={league} teams={teams} />
       </TabsContent>
 
       <TabsContent value="teams" className="mt-6">

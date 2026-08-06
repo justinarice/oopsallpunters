@@ -6,6 +6,7 @@ import { AtSign, Pencil, Plus, Trash2 } from "lucide-react"
 import { createTeam, updateTeam, deleteTeam } from "@/lib/actions/team"
 import type { ActionResult } from "@/lib/actions/guard"
 import type { Team } from "@/lib/types"
+import { sleeperAvatarUrl } from "@/lib/sleeper-avatar"
 import {
   Card,
   CardContent,
@@ -17,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
 import {
   Field,
@@ -63,7 +65,11 @@ function TeamFormFields({ team }: { team?: Team }) {
           name="sleeperUsername"
           defaultValue={team?.sleeper_username ?? ""}
         />
-        <FieldDescription>For reference only — no live Sleeper sync.</FieldDescription>
+        <FieldDescription>
+          {team?.sleeper_user_id
+            ? `Resolved to ${team.sleeper_display_name ?? team.sleeper_username} on Sleeper.`
+            : "Resolved against Sleeper automatically on save."}
+        </FieldDescription>
       </Field>
     </FieldGroup>
   )
@@ -158,17 +164,39 @@ export function TeamsSection({
           <ul className="flex flex-col divide-y divide-border">
             {teams.map((team) => (
               <li key={team.id} className="flex items-center justify-between gap-4 py-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{team.team_name}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {team.owner_name}
-                    {team.sleeper_username && (
-                      <Badge variant="secondary" className="ml-2 gap-1">
-                        <AtSign className="size-3" />
-                        {team.sleeper_username}
-                      </Badge>
-                    )}
-                  </p>
+                <div className="flex min-w-0 items-center gap-3">
+                  {team.sleeper_user_id && (
+                    <Avatar size="sm">
+                      {team.sleeper_avatar && (
+                        <AvatarImage
+                          src={sleeperAvatarUrl(team.sleeper_avatar, true)}
+                          alt=""
+                        />
+                      )}
+                      <AvatarFallback>
+                        {(team.sleeper_display_name ?? team.owner_name)[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{team.team_name}</p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {team.owner_name}
+                      {team.sleeper_user_id ? (
+                        <Badge variant="secondary" className="ml-2 gap-1">
+                          <AtSign className="size-3" />
+                          {team.sleeper_display_name ?? team.sleeper_username}
+                        </Badge>
+                      ) : (
+                        team.sleeper_username && (
+                          <Badge variant="outline" className="ml-2 gap-1">
+                            <AtSign className="size-3" />
+                            {team.sleeper_username} (unresolved)
+                          </Badge>
+                        )
+                      )}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button

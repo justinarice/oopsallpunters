@@ -168,6 +168,12 @@ export interface StandingRow {
   seasonPoints: number
   rank: number
   lastWeekPoints: number | null
+  /** Sum of this team's synced Sleeper matchup points across the season.
+   *  Null when the league isn't linked to Sleeper (or nothing's synced yet) —
+   *  the UI should omit the Sleeper/Combined columns entirely in that case. */
+  sleeperPoints: number | null
+  /** seasonPoints + sleeperPoints. Null under the same conditions as sleeperPoints. */
+  combinedPoints: number | null
 }
 
 /** Active roster assignment joined with its team and punter. */

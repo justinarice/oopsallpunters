@@ -213,12 +213,23 @@ export async function getImportHistory(
  * Standings, computed in TS from weekly_scores. Before any scores exist
  * (Phase 2), every team shows 0 points and is ordered by name — the page
  * still renders a complete, real roster.
+ *
+ * When the league is linked to Sleeper and has synced weeks (see
+ * lib/actions/sleeper.ts), each row also gets sleeperPoints/combinedPoints
+ * and ranking switches to combined total — otherwise those fields are null
+ * and ranking stays punter-points-only, exactly as before.
  */
 export async function getStandings(leagueId: string): Promise<StandingRow[]> {
   const supabase = await createClient()
-  const [teams, assignments] = await Promise.all([
+  const [teams, assignments, league] = await Promise.all([
     getTeams(leagueId),
     getActiveAssignments(leagueId),
+    supabase
+      .from("leagues")
+      .select("sleeper_league_id")
+      .eq("id", leagueId)
+      .maybeSingle()
+      .then((r) => r.data),
   ])
 
   const punterByTeam = new Map<string, Punter>()
@@ -245,19 +256,52 @@ export async function getStandings(leagueId: string): Promise<StandingRow[]> {
     }
   }
 
-  const rows = teams.map((team) => ({
-    team,
-    punter: punterByTeam.get(team.id) ?? null,
-    seasonPoints: seasonByTeam.get(team.id) ?? 0,
-    lastWeekPoints: maxWeek > 0 ? (lastWeekByTeam.get(team.id) ?? 0) : null,
-    rank: 0,
-  }))
+  // Sleeper points are only meaningful for a linked league — skip the query
+  // entirely otherwise so unlinked leagues (the common case today) pay no
+  // extra cost.
+  const sleeperByTeam = new Map<string, number>()
+  if (league?.sleeper_league_id) {
+    const { data: sleeperPoints, error: swpError } = await supabase
+      .from("sleeper_weekly_points")
+      .select("team_id, points")
+      .eq("league_id", leagueId)
+      .not("team_id", "is", null)
+    if (swpError)
+      console.error("[v0] getStandings sleeper points error:", swpError.message)
+    for (const s of sleeperPoints ?? []) {
+      const tid = s.team_id as string
+      sleeperByTeam.set(tid, (sleeperByTeam.get(tid) ?? 0) + (Number(s.points) || 0))
+    }
+  }
 
-  rows.sort(
-    (a, b) =>
+  const isLinked = !!league?.sleeper_league_id
+
+  const rows = teams.map((team) => {
+    const seasonPoints = seasonByTeam.get(team.id) ?? 0
+    const sleeperPoints = isLinked ? (sleeperByTeam.get(team.id) ?? 0) : null
+    return {
+      team,
+      punter: punterByTeam.get(team.id) ?? null,
+      seasonPoints,
+      lastWeekPoints: maxWeek > 0 ? (lastWeekByTeam.get(team.id) ?? 0) : null,
+      sleeperPoints,
+      combinedPoints: sleeperPoints != null ? seasonPoints + sleeperPoints : null,
+      rank: 0,
+    }
+  })
+
+  rows.sort((a, b) => {
+    if (isLinked) {
+      return (
+        (b.combinedPoints ?? 0) - (a.combinedPoints ?? 0) ||
+        a.team.team_name.localeCompare(b.team.team_name)
+      )
+    }
+    return (
       b.seasonPoints - a.seasonPoints ||
-      a.team.team_name.localeCompare(b.team.team_name),
-  )
+      a.team.team_name.localeCompare(b.team.team_name)
+    )
+  })
   rows.forEach((r, i) => (r.rank = i + 1))
   return rows
 }

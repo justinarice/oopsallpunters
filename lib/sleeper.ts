@@ -168,7 +168,7 @@ export function getNflState(): Promise<SleeperNflState | null> {
   return sleeperGet<SleeperNflState>(`/state/nfl`)
 }
 
-/** Full avatar image URL for a Sleeper avatar id. */
-export function avatarUrl(avatarId: string, thumb = false): string {
-  return `https://sleepercdn.com/avatars${thumb ? "/thumbs" : ""}/${avatarId}`
-}
+/** Full avatar image URL for a Sleeper avatar id. Re-exported here for
+ *  convenience in server code; see lib/sleeper-avatar.ts for the
+ *  client-safe original (this file is server-only). */
+export { sleeperAvatarUrl as avatarUrl } from "@/lib/sleeper-avatar"

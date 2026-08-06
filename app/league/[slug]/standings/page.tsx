@@ -21,13 +21,16 @@ export default async function StandingsPage({
   const league = await getLeagueBySlug(slug)
   if (!league) notFound()
   const standings = await getStandings(league.id)
+  const isLinked = standings.some((r) => r.sleeperPoints !== null)
 
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-lg font-semibold">Standings</h2>
         <p className="text-sm text-muted-foreground">
-          Ranked by total punter fantasy points across the season.
+          {isLinked
+            ? "Ranked by punter points combined with your Sleeper league score."
+            : "Ranked by total punter fantasy points across the season."}
         </p>
       </div>
       {standings.length === 0 ? (
@@ -43,7 +46,15 @@ export default async function StandingsPage({
                 <TableHead>Team</TableHead>
                 <TableHead>Punter</TableHead>
                 <TableHead className="text-right">Last Week</TableHead>
-                <TableHead className="text-right">Season</TableHead>
+                <TableHead className="text-right">
+                  {isLinked ? "Punter Pts" : "Season"}
+                </TableHead>
+                {isLinked && (
+                  <>
+                    <TableHead className="text-right">Sleeper Pts</TableHead>
+                    <TableHead className="text-right">Combined</TableHead>
+                  </>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -75,9 +86,29 @@ export default async function StandingsPage({
                       ? formatPoints(row.lastWeekPoints)
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">
+                  <TableCell
+                    className={
+                      isLinked
+                        ? "text-right font-mono text-muted-foreground"
+                        : "text-right font-mono font-semibold"
+                    }
+                  >
                     {formatPoints(row.seasonPoints)}
                   </TableCell>
+                  {isLinked && (
+                    <>
+                      <TableCell className="text-right font-mono text-muted-foreground">
+                        {row.sleeperPoints != null
+                          ? formatPoints(row.sleeperPoints)
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        {row.combinedPoints != null
+                          ? formatPoints(row.combinedPoints)
+                          : "—"}
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

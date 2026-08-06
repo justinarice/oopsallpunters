@@ -70,12 +70,12 @@ export const samplePunters: Punter[] = [
 ]
 
 export const sampleStandings: StandingRow[] = [
-  { team: sampleTeams[0], punter: samplePunters[4], seasonPoints: 84.5, rank: 1, lastWeekPoints: 21.0 },
-  { team: sampleTeams[2], punter: samplePunters[0], seasonPoints: 79.0, rank: 2, lastWeekPoints: 18.5 },
-  { team: sampleTeams[4], punter: samplePunters[2], seasonPoints: 72.5, rank: 3, lastWeekPoints: 16.0 },
-  { team: sampleTeams[3], punter: samplePunters[3], seasonPoints: 68.0, rank: 4, lastWeekPoints: 19.5 },
-  { team: sampleTeams[1], punter: samplePunters[1], seasonPoints: 61.5, rank: 5, lastWeekPoints: 12.0 },
-  { team: sampleTeams[5], punter: samplePunters[5], seasonPoints: 54.0, rank: 6, lastWeekPoints: 9.5 },
+  { team: sampleTeams[0], punter: samplePunters[4], seasonPoints: 84.5, rank: 1, lastWeekPoints: 21.0, sleeperPoints: null, combinedPoints: null },
+  { team: sampleTeams[2], punter: samplePunters[0], seasonPoints: 79.0, rank: 2, lastWeekPoints: 18.5, sleeperPoints: null, combinedPoints: null },
+  { team: sampleTeams[4], punter: samplePunters[2], seasonPoints: 72.5, rank: 3, lastWeekPoints: 16.0, sleeperPoints: null, combinedPoints: null },
+  { team: sampleTeams[3], punter: samplePunters[3], seasonPoints: 68.0, rank: 4, lastWeekPoints: 19.5, sleeperPoints: null, combinedPoints: null },
+  { team: sampleTeams[1], punter: samplePunters[1], seasonPoints: 61.5, rank: 5, lastWeekPoints: 12.0, sleeperPoints: null, combinedPoints: null },
+  { team: sampleTeams[5], punter: samplePunters[5], seasonPoints: 54.0, rank: 6, lastWeekPoints: 9.5, sleeperPoints: null, combinedPoints: null },
 ]
 
 export const sampleScoringRules: ScoringRule[] = [
