@@ -228,8 +228,13 @@ export async function linkSleeperLeague(
         .filter((r) => r.owner_id)
         .map((r) => [r.owner_id as string, r.roster_id]),
     )
+    // Some Sleeper league members have a null username (e.g. joined via
+    // invite link and never set a public one) — only those with one can be
+    // matched by username, so filter before building the lookup map.
     const userByUsernameLower = new Map(
-      sleeperUsers.map((u) => [u.username.toLowerCase(), u]),
+      sleeperUsers
+        .filter((u): u is typeof u & { username: string } => !!u.username)
+        .map((u) => [u.username.toLowerCase(), u]),
     )
     const userById = new Map(sleeperUsers.map((u) => [u.user_id, u]))
 
@@ -264,7 +269,9 @@ export async function linkSleeperLeague(
         .from("teams")
         .update({
           sleeper_user_id: user.user_id,
-          sleeper_username: user.username,
+          // Sleeper doesn't always expose a username; don't blank out a
+          // value the commissioner already had stored if so.
+          sleeper_username: user.username ?? team.sleeper_username,
           sleeper_avatar: user.avatar,
           sleeper_display_name: user.display_name,
           sleeper_roster_id: rosterId ?? null,

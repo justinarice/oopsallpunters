@@ -57,7 +57,8 @@ async function sleeperGet<T>(path: string): Promise<T | null> {
 
 export interface SleeperUser {
   user_id: string
-  username: string
+  /** Null for members who joined via invite link and never set one publicly. */
+  username: string | null
   display_name: string
   avatar: string | null
 }
@@ -75,7 +76,8 @@ export interface SleeperLeague {
 
 export interface SleeperLeagueUser {
   user_id: string
-  username: string
+  /** Null for members who joined via invite link and never set one publicly. */
+  username: string | null
   display_name: string
   avatar: string | null
   metadata: { team_name?: string } | null
