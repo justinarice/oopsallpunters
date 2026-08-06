@@ -4,6 +4,36 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { logAction, requireCommissioner } from "@/lib/actions/guard"
 import type { ActionResult } from "@/lib/actions/guard"
+import { getUser as getSleeperUser } from "@/lib/sleeper"
+
+/**
+ * Resolves a commissioner-entered Sleeper username to its stable identity
+ * fields. Returns nulls (not a thrown error) when the field is blank or the
+ * username doesn't resolve -- a bad/unknown Sleeper username shouldn't block
+ * creating or editing a team, since sleeper_username is optional.
+ */
+async function resolveSleeperIdentity(username: string | undefined) {
+  const empty = {
+    sleeper_username: null as string | null,
+    sleeper_user_id: null as string | null,
+    sleeper_avatar: null as string | null,
+    sleeper_display_name: null as string | null,
+  }
+  if (!username) return empty
+
+  const user = await getSleeperUser(username)
+  if (!user) {
+    // Keep what the commissioner typed even though it didn't resolve, so
+    // they can see/fix it later, but don't fabricate an identity.
+    return { ...empty, sleeper_username: username }
+  }
+  return {
+    sleeper_username: username,
+    sleeper_user_id: user.user_id,
+    sleeper_avatar: user.avatar,
+    sleeper_display_name: user.display_name,
+  }
+}
 
 const createSchema = z.object({
   leagueId: z.string().uuid(),
@@ -27,13 +57,15 @@ export async function createTeam(
 
   try {
     const ctx = await requireCommissioner(leagueId)
+    const identity = await resolveSleeperIdentity(sleeperUsername || undefined)
+
     const { data, error } = await ctx.supabase
       .from("teams")
       .insert({
         league_id: leagueId,
         team_name: teamName,
         owner_name: ownerName,
-        sleeper_username: sleeperUsername || null,
+        ...identity,
       })
       .select("id, team_name, owner_name")
       .single()
@@ -76,18 +108,32 @@ export async function updateTeam(
 
     const { data: before } = await ctx.supabase
       .from("teams")
-      .select("team_name, owner_name, sleeper_username")
+      .select(
+        "team_name, owner_name, sleeper_username, sleeper_user_id, sleeper_avatar, sleeper_display_name",
+      )
       .eq("id", teamId)
       .eq("league_id", leagueId)
       .maybeSingle()
     if (!before) return { ok: false, error: "Team not found." }
+
+    // Only re-resolve against Sleeper if the username actually changed --
+    // avoids an extra API call on every unrelated edit (e.g. renaming a team).
+    const usernameChanged = (before.sleeper_username ?? "") !== (sleeperUsername || "")
+    const identity = usernameChanged
+      ? await resolveSleeperIdentity(sleeperUsername || undefined)
+      : {
+          sleeper_username: before.sleeper_username,
+          sleeper_user_id: before.sleeper_user_id,
+          sleeper_avatar: before.sleeper_avatar,
+          sleeper_display_name: before.sleeper_display_name,
+        }
 
     const { error } = await ctx.supabase
       .from("teams")
       .update({
         team_name: teamName,
         owner_name: ownerName,
-        sleeper_username: sleeperUsername || null,
+        ...identity,
       })
       .eq("id", teamId)
       .eq("league_id", leagueId)
@@ -97,7 +143,7 @@ export async function updateTeam(
       ctx,
       `Edited team ${teamName}`,
       before,
-      { team_name: teamName, owner_name: ownerName, sleeper_username: sleeperUsername || null },
+      { team_name: teamName, owner_name: ownerName, ...identity },
     )
 
     revalidatePath(`/league/${ctx.slug}`, "layout")

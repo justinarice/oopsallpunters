@@ -39,6 +39,8 @@ export interface League {
   commissioner_id: string
   logo_url: string | null
   announcement: string | null
+  /** Sleeper's league_id when this league is linked. Null = unlinked. */
+  sleeper_league_id: string | null
   created_at: string
 }
 
@@ -47,7 +49,17 @@ export interface Team {
   league_id: string
   team_name: string
   owner_name: string
+  /** Commissioner-entered lookup value. May be a stale username; prefer
+   *  sleeper_user_id for identity once resolved. */
   sleeper_username: string | null
+  /** Stable Sleeper identity, resolved server-side from sleeper_username.
+   *  Usernames can change over time; this does not. */
+  sleeper_user_id: string | null
+  /** roster_id within the linked Sleeper league, once resolved via
+   *  linkSleeperLeague. Null until the league is linked and matched. */
+  sleeper_roster_id: number | null
+  sleeper_avatar: string | null
+  sleeper_display_name: string | null
 }
 
 export interface Punter {

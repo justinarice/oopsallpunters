@@ -25,6 +25,7 @@ export const sampleLeague: League = {
   commissioner_id: 'usr_commish',
   logo_url: null,
   announcement: null,
+  sleeper_league_id: null,
   created_at: '2026-07-01T12:00:00Z',
 }
 
@@ -38,17 +39,25 @@ export const sampleLeagues: League[] = [
     commissioner_id: 'usr_commish',
     logo_url: null,
     announcement: null,
+    sleeper_league_id: null,
     created_at: '2026-06-14T09:30:00Z',
   },
 ]
 
+const noSleeperIdentity = {
+  sleeper_user_id: null,
+  sleeper_roster_id: null,
+  sleeper_avatar: null,
+  sleeper_display_name: null,
+}
+
 export const sampleTeams: Team[] = [
-  { id: 't1', league_id: 'lg_1', team_name: 'Hangtime Heroes', owner_name: 'Marcus', sleeper_username: 'marcus_p' },
-  { id: 't2', league_id: 'lg_1', team_name: 'Shank City', owner_name: 'Priya', sleeper_username: 'priya23' },
-  { id: 't3', league_id: 'lg_1', team_name: 'Inside the 20', owner_name: 'Devon', sleeper_username: 'dvn' },
-  { id: 't4', league_id: 'lg_1', team_name: 'Touchback Tyrants', owner_name: 'Sam', sleeper_username: 'sammyG' },
-  { id: 't5', league_id: 'lg_1', team_name: 'Net Gains', owner_name: 'Alex', sleeper_username: 'alexkicks' },
-  { id: 't6', league_id: 'lg_1', team_name: 'Coffin Corner', owner_name: 'Jordan', sleeper_username: 'jordo' },
+  { id: 't1', league_id: 'lg_1', team_name: 'Hangtime Heroes', owner_name: 'Marcus', sleeper_username: 'marcus_p', ...noSleeperIdentity },
+  { id: 't2', league_id: 'lg_1', team_name: 'Shank City', owner_name: 'Priya', sleeper_username: 'priya23', ...noSleeperIdentity },
+  { id: 't3', league_id: 'lg_1', team_name: 'Inside the 20', owner_name: 'Devon', sleeper_username: 'dvn', ...noSleeperIdentity },
+  { id: 't4', league_id: 'lg_1', team_name: 'Touchback Tyrants', owner_name: 'Sam', sleeper_username: 'sammyG', ...noSleeperIdentity },
+  { id: 't5', league_id: 'lg_1', team_name: 'Net Gains', owner_name: 'Alex', sleeper_username: 'alexkicks', ...noSleeperIdentity },
+  { id: 't6', league_id: 'lg_1', team_name: 'Coffin Corner', owner_name: 'Jordan', sleeper_username: 'jordo', ...noSleeperIdentity },
 ]
 
 export const samplePunters: Punter[] = [
