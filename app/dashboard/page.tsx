@@ -5,6 +5,7 @@ import {
   getMyLeagues,
   getTeams,
   getPuntersWithOwners,
+  getScoringRules,
 } from "@/lib/queries"
 import { CreateLeague } from "@/components/dashboard/create-league"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
@@ -30,9 +31,10 @@ export default async function DashboardPage() {
 
   // MVP: a commissioner manages a single league (the most recently created).
   const league = leagues[0]
-  const [teams, punters] = await Promise.all([
+  const [teams, punters, scoringRules] = await Promise.all([
     getTeams(league.id),
     getPuntersWithOwners(league.id),
+    getScoringRules(league.id),
   ])
 
   return (
@@ -60,7 +62,12 @@ export default async function DashboardPage() {
         </Button>
       </div>
 
-      <DashboardTabs league={league} teams={teams} punters={punters} />
+      <DashboardTabs
+        league={league}
+        teams={teams}
+        punters={punters}
+        scoringRules={scoringRules}
+      />
     </div>
   )
 }

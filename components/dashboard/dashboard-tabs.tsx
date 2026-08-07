@@ -2,28 +2,23 @@
 
 import { Repeat, Settings2, Sliders, Users } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import type { League, PunterWithOwner, Team } from "@/lib/types"
+import type { League, PunterWithOwner, ScoringRule, Team } from "@/lib/types"
 import { SettingsSection } from "./settings-section"
 import { SleeperSection } from "./sleeper-section"
 import { TeamsSection } from "./teams-section"
 import { RosterSection } from "./roster-section"
+import { ScoringSection } from "./scoring-section"
 
 export function DashboardTabs({
   league,
   teams,
   punters,
+  scoringRules,
 }: {
   league: League
   teams: Team[]
   punters: PunterWithOwner[]
+  scoringRules: ScoringRule[]
 }) {
   return (
     <Tabs defaultValue="settings">
@@ -60,28 +55,7 @@ export function DashboardTabs({
       </TabsContent>
 
       <TabsContent value="scoring" className="mt-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <CardTitle>Scoring editor</CardTitle>
-                <CardDescription>
-                  Edit point values and choose retroactive vs. forward-only
-                  recalculation on save.
-                </CardDescription>
-              </div>
-              <Badge variant="secondary" className="font-normal">
-                Wires up in Phase 3
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              The public scoring rules are visible on the league&apos;s Scoring
-              page. Editing with recalculation lands in the next phase.
-            </p>
-          </CardContent>
-        </Card>
+        <ScoringSection leagueId={league.id} scoringRules={scoringRules} />
       </TabsContent>
     </Tabs>
   )
