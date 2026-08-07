@@ -39,9 +39,11 @@ export function SleeperSection({
       const res = await linkSleeperLeague(prev, fd)
       if (res.ok && res.data) {
         setUnmatched(res.data.unmatched)
-        toast.success(
-          `Linked to Sleeper — matched ${res.data.matched} of ${teams.length} teams.`,
-        )
+        const { matched, created, skippedRosters } = res.data
+        const parts = [`${matched} matched`]
+        if (created > 0) parts.push(`${created} new team${created === 1 ? "" : "s"} created`)
+        if (skippedRosters > 0) parts.push(`${skippedRosters} roster${skippedRosters === 1 ? "" : "s"} skipped (no owner)`)
+        toast.success(`Linked to Sleeper — ${parts.join(", ")}.`)
       } else if (!res.ok) {
         toast.error(res.error)
       }
@@ -126,9 +128,11 @@ export function SleeperSection({
 
         {unmatched.length > 0 && (
           <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
-            Couldn&apos;t match: {unmatched.join(", ")}. Check that each
-            team&apos;s Sleeper username (in Team management) matches a member
-            of that Sleeper league, then re-sync.
+            These existing teams couldn&apos;t be matched to a Sleeper member
+            and were left as-is: {unmatched.join(", ")}. Check each team&apos;s
+            Sleeper username (in Team management), then re-sync. New teams
+            are created automatically for any Sleeper roster without a
+            matching team already.
           </p>
         )}
 

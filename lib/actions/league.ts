@@ -179,23 +179,36 @@ const linkSleeperSchema = z.object({
 })
 
 export interface LinkSleeperResult {
+  /** Existing local teams successfully matched to a Sleeper roster owner. */
   matched: number
-  unmatched: string[] // team_name values that couldn't be matched
+  /** New teams auto-created from Sleeper rosters that had no matching local team. */
+  created: number
+  /** Existing local teams whose sleeper_username didn't resolve to any
+   *  member of this Sleeper league — commissioner should fix a typo. */
+  unmatched: string[]
+  /** Sleeper rosters with no owner_id (orphaned/abandoned) — nothing to link. */
+  skippedRosters: number
   totalSleeperUsers: number
 }
 
 /**
- * Links this league to a real Sleeper league and resolves each existing team
- * to its Sleeper roster/owner identity.
+ * Links this league to a real Sleeper league, resolves each existing team to
+ * its Sleeper roster/owner identity, and auto-creates a local team for any
+ * Sleeper roster that doesn't already have one — so linking a brand-new
+ * league needs zero manual team entry.
  *
  * Commissioner-initiated only (never automatic, per CLAUDE.md principle #4).
- * Matching strategy, in order:
- *   1. team.sleeper_user_id already resolved and present among the league's
- *      Sleeper users -> match directly.
- *   2. team.sleeper_username matches a Sleeper user's username (case
- *      insensitive) -> resolve and match.
- * Teams that don't match either way are left alone and reported back so the
- * commissioner can fix the username and re-run the link.
+ * Strategy:
+ *   1. For each EXISTING local team: match by already-resolved
+ *      sleeper_user_id first, then by sleeper_username (case-insensitive).
+ *      Matched teams get their identity + roster_id updated in place —
+ *      existing punter assignments/trade history on that team are untouched.
+ *   2. For each Sleeper ROSTER with an owner not claimed by step 1: create a
+ *      new local team, named from Sleeper's own league team_name if set
+ *      (falls back to display_name, then a generic "Team <roster_id>").
+ *      The commissioner can rename it afterward like any other team.
+ *   3. Rosters with no owner_id (abandoned in Sleeper) are skipped and
+ *      counted, not created as phantom teams.
  */
 export async function linkSleeperLeague(
   _prev: ActionResult<LinkSleeperResult> | null,
@@ -209,6 +222,9 @@ export async function linkSleeperLeague(
   const { leagueId, sleeperLeagueId } = parsed.data
 
   try {
+    // requireCommissioner scopes everything below strictly to this league's
+    // UUID — never resolved by name/slug, so linking always targets exactly
+    // the league the commissioner is currently managing.
     const ctx = await requireCommissioner(leagueId)
 
     const [sleeperLeague, sleeperUsers, sleeperRosters] = await Promise.all([
@@ -226,7 +242,7 @@ export async function linkSleeperLeague(
     const rosterByOwner = new Map(
       sleeperRosters
         .filter((r) => r.owner_id)
-        .map((r) => [r.owner_id as string, r.roster_id]),
+        .map((r) => [r.owner_id as string, r]),
     )
     // Some Sleeper league members have a null username (e.g. joined via
     // invite link and never set a public one) — only those with one can be
@@ -246,6 +262,9 @@ export async function linkSleeperLeague(
 
     let matched = 0
     const unmatched: string[] = []
+    // Sleeper user_ids already claimed by an existing local team, so step 2
+    // knows which rosters still need a brand-new team created.
+    const claimedUserIds = new Set<string>()
 
     for (const team of teams ?? []) {
       // Prefer the already-resolved user_id if it's a member of this league.
@@ -264,7 +283,7 @@ export async function linkSleeperLeague(
         continue
       }
 
-      const rosterId = rosterByOwner.get(user.user_id)
+      const roster = rosterByOwner.get(user.user_id)
       const { error: updateError } = await ctx.supabase
         .from("teams")
         .update({
@@ -274,7 +293,7 @@ export async function linkSleeperLeague(
           sleeper_username: user.username ?? team.sleeper_username,
           sleeper_avatar: user.avatar,
           sleeper_display_name: user.display_name,
-          sleeper_roster_id: rosterId ?? null,
+          sleeper_roster_id: roster?.roster_id ?? null,
         })
         .eq("id", team.id as string)
       if (updateError) {
@@ -282,6 +301,44 @@ export async function linkSleeperLeague(
         continue
       }
       matched++
+      claimedUserIds.add(user.user_id)
+    }
+
+    // Step 2: auto-create a team for every Sleeper roster whose owner isn't
+    // already tied to a local team.
+    let created = 0
+    let skippedRosters = 0
+    for (const roster of sleeperRosters) {
+      if (!roster.owner_id) {
+        skippedRosters++
+        continue
+      }
+      if (claimedUserIds.has(roster.owner_id)) continue
+
+      const user = userById.get(roster.owner_id)
+      const teamName =
+        user?.metadata?.team_name?.trim() ||
+        user?.display_name ||
+        `Team ${roster.roster_id}`
+
+      const { error: insertError } = await ctx.supabase.from("teams").insert({
+        league_id: leagueId,
+        team_name: teamName,
+        owner_name: user?.display_name ?? teamName,
+        sleeper_user_id: roster.owner_id,
+        sleeper_username: user?.username ?? null,
+        sleeper_avatar: user?.avatar ?? null,
+        sleeper_display_name: user?.display_name ?? null,
+        sleeper_roster_id: roster.roster_id,
+      })
+      if (insertError) {
+        // Don't fail the whole link over one bad insert (e.g. a rare name
+        // collision) — report it as skipped and keep going.
+        skippedRosters++
+        continue
+      }
+      created++
+      claimedUserIds.add(roster.owner_id)
     }
 
     const { error: leagueUpdateError } = await ctx.supabase
@@ -292,16 +349,22 @@ export async function linkSleeperLeague(
 
     await logAction(
       ctx,
-      `Linked Sleeper league "${sleeperLeague.name}" (${matched}/${(teams ?? []).length} teams matched)`,
+      `Linked Sleeper league "${sleeperLeague.name}" (${matched} matched, ${created} created, ${unmatched.length} unmatched)`,
       { sleeper_league_id: null },
-      { sleeper_league_id: sleeperLeagueId, matched, unmatched },
+      { sleeper_league_id: sleeperLeagueId, matched, created, unmatched },
     )
 
     revalidatePath(`/league/${ctx.slug}`, "layout")
     revalidatePath("/dashboard")
     return {
       ok: true,
-      data: { matched, unmatched, totalSleeperUsers: sleeperUsers.length },
+      data: {
+        matched,
+        created,
+        unmatched,
+        skippedRosters,
+        totalSleeperUsers: sleeperUsers.length,
+      },
     }
   } catch (e) {
     return { ok: false, error: (e as Error).message }
