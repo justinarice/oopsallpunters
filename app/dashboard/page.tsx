@@ -9,8 +9,14 @@ import {
 } from "@/lib/queries"
 import { CreateLeague } from "@/components/dashboard/create-league"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
+import { LeaguePicker } from "@/components/dashboard/league-picker"
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ league?: string }>
+}) {
+  const { league: requestedSlug } = await searchParams
   const leagues = await getMyLeagues()
 
   if (leagues.length === 0) {
@@ -29,8 +35,13 @@ export default async function DashboardPage() {
     )
   }
 
-  // MVP: a commissioner manages a single league (the most recently created).
-  const league = leagues[0]
+  // Respects ?league=<slug> if it points at one of THIS commissioner's own
+  // leagues; otherwise falls back to the most recently created one. Scoping
+  // the lookup to `leagues` (already filtered to this commissioner) means a
+  // stale or someone-else's slug in the URL can't leak another league in.
+  const league =
+    leagues.find((l) => l.slug === requestedSlug) ?? leagues[0]
+
   const [teams, punters, scoringRules] = await Promise.all([
     getTeams(league.id),
     getPuntersWithOwners(league.id),
@@ -51,15 +62,18 @@ export default async function DashboardPage() {
             log.
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={<Link href={`/league/${league.slug}`} />}
-        >
-          <Eye data-icon="inline-start" />
-          View public page
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <LeaguePicker leagues={leagues} selectedSlug={league.slug} />
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href={`/league/${league.slug}`} />}
+          >
+            <Eye data-icon="inline-start" />
+            View public page
+          </Button>
+        </div>
       </div>
 
       <DashboardTabs
