@@ -354,11 +354,16 @@ export async function getWeeklyResults(
   const weeks = [...weeksSet].sort((a, b) => a - b)
   if (weeks.length === 0) return { weeks: [1], rowsByWeek: { 1: [] } }
 
+  // Ordered oldest-first: when a corrected re-import produces a second
+  // weekly_stats row for the same (week, player_id), the Map below keeps
+  // whichever it sees LAST, so ascending order means the most recent
+  // import always wins — without ever deleting the original row.
   const { data: stats } = await supabase
     .from("weekly_stats")
     .select("*")
     .eq("season", season)
     .in("week", weeks)
+    .order("created_at", { ascending: true })
 
   const punterById = new Map(punters.map((p) => [p.id, p]))
   const teamByPunter = new Map<string, Team>()

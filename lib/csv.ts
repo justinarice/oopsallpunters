@@ -26,6 +26,57 @@ export function parseCsv(text: string): CsvRow[] {
   return out
 }
 
+/**
+ * Streaming-style parse for very large CSVs (e.g. a full-season play-by-play
+ * export with 300+ columns and tens of thousands of rows): rather than
+ * building an array of every row, `onRow` is called once per row as it's
+ * parsed, and the caller extracts only what it needs before it's discarded.
+ * Same quote/embedded-comma/embedded-newline handling as parseCsvToArrays —
+ * this is that same state machine with the accumulation removed.
+ */
+export function forEachCsvRow(
+  text: string,
+  onRow: (fields: string[], rowIndex: number) => void,
+): void {
+  let field = ""
+  let row: string[] = []
+  let inQuotes = false
+  let rowIndex = 0
+  const s = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i]
+    if (inQuotes) {
+      if (ch === '"') {
+        if (s[i + 1] === '"') {
+          field += '"'
+          i++
+        } else {
+          inQuotes = false
+        }
+      } else {
+        field += ch
+      }
+    } else if (ch === '"') {
+      inQuotes = true
+    } else if (ch === ",") {
+      row.push(field)
+      field = ""
+    } else if (ch === "\n") {
+      row.push(field)
+      onRow(row, rowIndex)
+      rowIndex++
+      field = ""
+      row = []
+    } else {
+      field += ch
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field)
+    onRow(row, rowIndex)
+  }
+}
 /** Parse CSV text into a 2D array of raw string cells. */
 export function parseCsvToArrays(text: string): string[][] {
   const rows: string[][] = []

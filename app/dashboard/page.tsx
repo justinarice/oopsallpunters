@@ -6,6 +6,7 @@ import {
   getTeams,
   getPuntersWithOwners,
   getScoringRules,
+  getImportHistory,
 } from "@/lib/queries"
 import { CreateLeague } from "@/components/dashboard/create-league"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
@@ -42,10 +43,11 @@ export default async function DashboardPage({
   const league =
     leagues.find((l) => l.slug === requestedSlug) ?? leagues[0]
 
-  const [teams, punters, scoringRules] = await Promise.all([
+  const [teams, punters, scoringRules, importHistory] = await Promise.all([
     getTeams(league.id),
     getPuntersWithOwners(league.id),
     getScoringRules(league.id),
+    getImportHistory(league.id),
   ])
 
   return (
@@ -81,6 +83,7 @@ export default async function DashboardPage({
         teams={teams}
         punters={punters}
         scoringRules={scoringRules}
+        importHistory={importHistory}
       />
     </div>
   )

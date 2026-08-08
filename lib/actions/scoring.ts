@@ -196,11 +196,14 @@ async function recalculatePastScores(
   )
 
   const weeks = [...new Set(scores.map((s) => s.week as number))]
+  // Same ordering rationale as getWeeklyResults: ascending created_at so a
+  // corrected re-import's row overwrites the original in the lookup map.
   const { data: statsData } = await ctx.supabase
     .from("weekly_stats")
     .select("*")
     .eq("season", season)
     .in("week", weeks)
+    .order("created_at", { ascending: true })
   const statByKey = new Map<string, Record<string, unknown>>()
   for (const st of (statsData ?? []) as Record<string, unknown>[]) {
     statByKey.set(`${st.week}:${st.player_id}`, st)
