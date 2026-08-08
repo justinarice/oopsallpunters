@@ -5,11 +5,11 @@ import {
   CardContent,
   CardHeader,
 } from '@/components/ui/card'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { TeamAvatar } from '@/components/team-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { getLeagueBySlug, getStandings } from '@/lib/queries'
-import { formatPoints, initials } from '@/lib/format'
+import { formatPoints } from '@/lib/format'
 
 export default async function TeamsPage({
   params,
@@ -39,11 +39,11 @@ export default async function TeamsPage({
           <Card key={row.team.id}>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Avatar className="size-11">
-                  <AvatarFallback className="bg-secondary font-semibold">
-                    {initials(row.team.team_name)}
-                  </AvatarFallback>
-                </Avatar>
+                <TeamAvatar
+                  teamName={row.team.team_name}
+                  sleeperAvatar={row.team.sleeper_avatar}
+                  className="size-11"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{row.team.team_name}</p>
                   <p className="truncate text-sm text-muted-foreground">

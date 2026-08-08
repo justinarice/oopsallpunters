@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import { TeamAvatar } from "@/components/team-avatar"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -64,10 +65,21 @@ export default async function StandingsPage({
                     {row.rank}
                   </TableCell>
                   <TableCell>
-                    <p className="font-medium">{row.team.team_name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {row.team.owner_name}
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <TeamAvatar
+                        teamName={row.team.team_name}
+                        sleeperAvatar={row.team.sleeper_avatar}
+                        className="size-8"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          {row.team.team_name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {row.team.owner_name}
+                        </p>
+                      </div>
+                    </div>
                   </TableCell>
                   <TableCell>
                     {row.punter ? (

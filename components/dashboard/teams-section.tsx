@@ -6,7 +6,7 @@ import { AtSign, Pencil, Plus, Trash2 } from "lucide-react"
 import { createTeam, updateTeam, deleteTeam } from "@/lib/actions/team"
 import type { ActionResult } from "@/lib/actions/guard"
 import type { Team } from "@/lib/types"
-import { sleeperAvatarUrl } from "@/lib/sleeper-avatar"
+import { TeamAvatar } from "@/components/team-avatar"
 import {
   Card,
   CardContent,
@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Empty, EmptyDescription, EmptyTitle } from "@/components/ui/empty"
 import {
   Field,
@@ -165,19 +164,11 @@ export function TeamsSection({
             {teams.map((team) => (
               <li key={team.id} className="flex items-center justify-between gap-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  {team.sleeper_user_id && (
-                    <Avatar size="sm">
-                      {team.sleeper_avatar && (
-                        <AvatarImage
-                          src={sleeperAvatarUrl(team.sleeper_avatar, true)}
-                          alt=""
-                        />
-                      )}
-                      <AvatarFallback>
-                        {(team.sleeper_display_name ?? team.owner_name)[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
+                  <TeamAvatar
+                    teamName={team.team_name}
+                    sleeperAvatar={team.sleeper_avatar}
+                    className="size-6"
+                  />
                   <div className="min-w-0">
                     <p className="truncate font-medium">{team.team_name}</p>
                     <p className="truncate text-sm text-muted-foreground">

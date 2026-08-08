@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowRight, Download, Megaphone, Repeat, Trophy } from "lucide-react"
+import { TeamAvatar } from "@/components/team-avatar"
 import {
   Card,
   CardContent,
@@ -75,6 +76,11 @@ export default async function LeagueHomePage({
                   <span className="w-6 text-center font-mono text-lg font-semibold text-muted-foreground">
                     {row.rank}
                   </span>
+                  <TeamAvatar
+                    teamName={row.team.team_name}
+                    sleeperAvatar={row.team.sleeper_avatar}
+                    className="size-9"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{row.team.team_name}</p>
                     <p className="truncate text-sm text-muted-foreground">
