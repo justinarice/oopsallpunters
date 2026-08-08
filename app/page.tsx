@@ -158,8 +158,9 @@ export default async function HomePage() {
       <footer className="border-t border-border">
         <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
           <p className="text-xs text-muted-foreground">
-            Not affiliated with Sleeper. A companion tool for punter-only side
-            competitions.
+            Oops All Punters is an independent, fan-made companion for punter-only
+            side competitions and is not affiliated with, endorsed by, or
+            created by Sleeper.
           </p>
         </div>
       </footer>

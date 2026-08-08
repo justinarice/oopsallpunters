@@ -2,6 +2,15 @@
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
 
+## Disclaimer
+
+Oops All Punters is an independent, fan-made companion app for tracking
+punter-only fantasy scoring alongside a Sleeper league. It is **not
+affiliated with, endorsed by, or created by Sleeper**. "Sleeper" and any
+related marks belong to their respective owners; this project only reads
+public league data via Sleeper's API to support its own punter-scoring
+feature.
+
 ## Built with v0
 
 This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.

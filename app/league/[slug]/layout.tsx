@@ -36,9 +36,13 @@ export default async function LeagueLayout({
       <footer className="border-t border-border">
         <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6">
           <p className="text-xs text-muted-foreground text-balance">
-            A companion to Sleeper. Sleeper owns rosters, standard scoring, and
-            waivers — this app tracks punters only. Every commissioner action is
-            public and permanently logged.
+            Sleeper owns rosters, standard scoring, and waivers — this app
+            tracks punters only. Every commissioner action is public and
+            permanently logged.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground text-balance">
+            Oops All Punters is an independent, fan-made companion and is not
+            affiliated with, endorsed by, or created by Sleeper.
           </p>
         </div>
       </footer>
