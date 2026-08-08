@@ -2,6 +2,8 @@
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
 
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-FFDD00?style=flat-square)](https://buymeacoffee.com/justinrice)
+
 ## Disclaimer
 
 Oops All Punters is an independent, fan-made companion app for tracking

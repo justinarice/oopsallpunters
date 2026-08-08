@@ -162,6 +162,14 @@ export default async function HomePage() {
             side competitions and is not affiliated with, endorsed by, or
             created by Sleeper.
           </p>
+          <a
+            href="https://buymeacoffee.com/justinrice"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            ☕ Buy me a coffee
+          </a>
         </div>
       </footer>
     </div>

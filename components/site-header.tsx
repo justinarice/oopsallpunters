@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Shield } from 'lucide-react'
+import { Coffee, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Wordmark } from '@/components/brand'
 
@@ -14,15 +14,32 @@ export function SiteHeader() {
         <Link href="/" className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Wordmark />
         </Link>
-        <Button
-          variant="outline"
-          size="sm"
-          nativeButton={false}
-          render={<Link href="/dashboard" />}
-        >
-          <Shield data-icon="inline-start" />
-          Commissioner
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            nativeButton={false}
+            render={
+              <a
+                href="https://buymeacoffee.com/justinrice"
+                target="_blank"
+                rel="noopener noreferrer"
+              />
+            }
+          >
+            <Coffee data-icon="inline-start" />
+            <span className="hidden sm:inline">Buy me a coffee</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/dashboard" />}
+          >
+            <Shield data-icon="inline-start" />
+            Commissioner
+          </Button>
+        </div>
       </div>
     </header>
   )
