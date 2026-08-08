@@ -12,6 +12,12 @@ import { CreateLeague } from "@/components/dashboard/create-league"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
 import { LeaguePicker } from "@/components/dashboard/league-picker"
 
+// A "use server" file can only export async functions, so this can't live
+// in lib/actions/nflverse-import.ts itself — Next.js applies maxDuration to
+// every Server Action invoked from this route segment, which is where the
+// nflverse import (fetches/parses a ~98MB file) actually gets called from.
+export const maxDuration = 300
+
 export default async function DashboardPage({
   searchParams,
 }: {

@@ -1,11 +1,5 @@
 "use server"
 
-// Fetching+parsing a ~98MB season file needs more than the default function
-// duration. Hobby's ceiling is 300s (confirmed against this project's actual
-// Vercel plan) — request the full allowance rather than whatever the
-// unconfigured default is.
-export const maxDuration = 300
-
 import { createHash } from "node:crypto"
 import { z } from "zod"
 import { requireCommissioner, type ActionResult } from "@/lib/actions/guard"
