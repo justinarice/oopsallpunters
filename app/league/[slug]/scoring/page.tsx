@@ -1,4 +1,5 @@
 import { Info } from 'lucide-react'
+import type { Metadata } from 'next'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -13,6 +14,24 @@ import {
 import { notFound } from 'next/navigation'
 import { MODIFIER_LABELS, STAT_LABELS } from '@/lib/sample-data'
 import { getLeagueBySlug, getScoringRules } from '@/lib/queries'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) return {}
+
+  return {
+    title: `Scoring rules — ${league.name}`,
+    description: `How punter fantasy points are calculated in ${league.name} — fully public and configuration-driven.`,
+    alternates: {
+      canonical: `/league/${slug}/scoring`,
+    },
+  }
+}
 
 export default async function ScoringPage({
   params,

@@ -2,6 +2,7 @@ import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Toaster } from '@/components/ui/sonner'
+import { SITE_NAME, SITE_URL } from '@/lib/site'
 import './globals.css'
 
 const geistSans = Geist({
@@ -15,9 +16,16 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Oops All Punters — Sleeper Companion',
+  metadataBase: SITE_URL,
+  title: {
+    default: `${SITE_NAME} — Sleeper Companion`,
+    template: `%s — ${SITE_NAME}`,
+  },
   description:
     'A companion for Sleeper fantasy leagues that tracks NFL punters as a standalone scoring category: assignments, trades, imports, and live standings — all publicly auditable.',
+  alternates: {
+    canonical: '/',
+  },
   generator: 'v0.app',
 }
 

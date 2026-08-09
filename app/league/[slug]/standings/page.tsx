@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { TeamAvatar } from "@/components/team-avatar"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +13,24 @@ import {
 } from "@/components/ui/table"
 import { getLeagueBySlug, getStandings } from "@/lib/queries"
 import { formatPoints } from "@/lib/format"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) return {}
+
+  return {
+    title: `Standings — ${league.name}`,
+    description: `Season punter standings for ${league.name}, ranked by fantasy points.`,
+    alternates: {
+      canonical: `/league/${slug}/standings`,
+    },
+  }
+}
 
 export default async function StandingsPage({
   params,

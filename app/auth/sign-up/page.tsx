@@ -83,7 +83,9 @@ export default function SignUpPage() {
       </Link>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Create commissioner account</CardTitle>
+          <CardTitle asChild className="text-xl">
+            <h1>Create commissioner account</h1>
+          </CardTitle>
           <CardDescription>
             Sign up to run a league. Members never need an account.
           </CardDescription>

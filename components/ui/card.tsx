@@ -33,16 +33,36 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+function CardTitle({
+  className,
+  asChild = false,
+  children,
+  ...props
+}: React.ComponentProps<"div"> & { asChild?: boolean }) {
+  const titleClassName = cn(
+    "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+    className
+  )
+
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(
+      children as React.ReactElement<{ className?: string }>,
+      {
+        "data-slot": "card-title",
+        className: cn(
+          titleClassName,
+          (children as React.ReactElement<{ className?: string }>).props
+            .className
+        ),
+        ...props,
+      } as React.HTMLAttributes<HTMLElement>
+    )
+  }
+
   return (
-    <div
-      data-slot="card-title"
-      className={cn(
-        "text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
-        className
-      )}
-      {...props}
-    />
+    <div data-slot="card-title" className={titleClassName} {...props}>
+      {children}
+    </div>
   )
 }
 
