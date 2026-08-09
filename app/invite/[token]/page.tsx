@@ -37,15 +37,19 @@ export default async function InvitePage({
           <CardTitle className="text-xl">
             {preview.alreadyClaimed
               ? "Invite already used"
-              : `Claim ${preview.teamName}`}
+              : preview.isExpired
+                ? "Invite expired"
+                : `Claim ${preview.teamName}`}
           </CardTitle>
           <CardDescription>
             {preview.alreadyClaimed
               ? `This invite for ${preview.teamName} in ${preview.leagueName} has already been claimed. Ask your commissioner for a new link if that seems wrong.`
-              : `You're about to link your account to ${preview.teamName} in ${preview.leagueName}.`}
+              : preview.isExpired
+                ? `This invite for ${preview.teamName} in ${preview.leagueName} has expired. Ask your commissioner for a new link.`
+                : `You're about to link your account to ${preview.teamName} in ${preview.leagueName}.`}
           </CardDescription>
         </CardHeader>
-        {!preview.alreadyClaimed && (
+        {!preview.alreadyClaimed && !preview.isExpired && (
           <CardContent className="flex flex-col gap-3">
             {user ? (
               <ClaimButton token={token} fallbackLeagueSlug={preview.leagueSlug} />

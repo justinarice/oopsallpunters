@@ -55,6 +55,7 @@ export async function createTeamInvite(input: {
       .select("token")
       .eq("team_id", teamId)
       .is("claimed_at", null)
+      .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -158,6 +159,7 @@ export interface InvitePreview {
   leagueName: string
   leagueSlug: string
   alreadyClaimed: boolean
+  isExpired: boolean
 }
 
 /** No auth required — a visitor isn't signed in yet when they first open an
@@ -177,12 +179,14 @@ export async function getInvitePreview(
     league_name: string
     league_slug: string
     already_claimed: boolean
+    is_expired: boolean
   }
   return {
     teamName: row.team_name,
     leagueName: row.league_name,
     leagueSlug: row.league_slug,
     alreadyClaimed: row.already_claimed,
+    isExpired: row.is_expired,
   }
 }
 
@@ -212,6 +216,12 @@ export async function claimTeamInvite(
   if (error) {
     if (error.message.includes("invite_not_found")) {
       return { ok: false, error: "This invite link isn't valid." }
+    }
+    if (error.message.includes("invite_expired")) {
+      return {
+        ok: false,
+        error: "This invite has expired. Ask your commissioner for a new link.",
+      }
     }
     if (error.message.includes("invite_already_claimed")) {
       return { ok: false, error: "This invite has already been used." }
