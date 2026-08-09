@@ -11,9 +11,19 @@ import { createClient } from "@supabase/supabase-js"
 
 const { Client } = pg
 
+const demoPassword = process.env.DEMO_COMMISSIONER_PASSWORD
+if (!demoPassword) {
+  console.error(
+    "[demo] Set DEMO_COMMISSIONER_PASSWORD before running this script " +
+      "(no default — this account is created with email_confirm: true, so a " +
+      "hardcoded password would be a real, immediately-usable credential).",
+  )
+  process.exit(1)
+}
+
 const COMMISH = {
   email: "commissioner@oopsallpunters.app",
-  password: "PunterLeague2026!",
+  password: demoPassword,
   name: "Dan the Commish",
 }
 
