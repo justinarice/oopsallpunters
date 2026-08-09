@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import {
   getMyLeagues,
   getTeams,
+  getTeamInvites,
   getPuntersWithOwners,
   getScoringRules,
   getImportHistory,
@@ -49,12 +50,14 @@ export default async function DashboardPage({
   const league =
     leagues.find((l) => l.slug === requestedSlug) ?? leagues[0]
 
-  const [teams, punters, scoringRules, importHistory] = await Promise.all([
-    getTeams(league.id),
-    getPuntersWithOwners(league.id),
-    getScoringRules(league.id),
-    getImportHistory(league.id),
-  ])
+  const [teams, teamInvites, punters, scoringRules, importHistory] =
+    await Promise.all([
+      getTeams(league.id),
+      getTeamInvites(league.id),
+      getPuntersWithOwners(league.id),
+      getScoringRules(league.id),
+      getImportHistory(league.id),
+    ])
 
   return (
     <div className="flex flex-col gap-6">
@@ -87,6 +90,7 @@ export default async function DashboardPage({
       <DashboardTabs
         league={league}
         teams={teams}
+        teamInvites={teamInvites}
         punters={punters}
         scoringRules={scoringRules}
         importHistory={importHistory}

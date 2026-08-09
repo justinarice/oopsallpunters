@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -23,6 +23,15 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Read on mount (not during render) so server-rendered HTML and the first
+  // client render match — this only affects post-submit behavior and copy,
+  // both of which are fine to settle in a moment after hydration.
+  const [redirectTo, setRedirectTo] = useState<string | null>(null)
+  useEffect(() => {
+    setRedirectTo(new URLSearchParams(window.location.search).get("redirect"))
+  }, [])
+  const isInviteFlow = redirectTo?.startsWith("/invite/") ?? false
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     const supabase = createClient()
@@ -41,7 +50,7 @@ export default function LoginPage() {
       // causing the middleware to bounce back to /auth/login (looks like a
       // hang, then requires a second sign-in attempt). A full navigation
       // guarantees the browser sends the fresh cookies with the request.
-      window.location.href = "/dashboard"
+      window.location.href = redirectTo || "/dashboard"
     } catch (err: unknown) {
       console.error("[v0] Login error:", err)
       const { code } = (err ?? {}) as { code?: string }
@@ -61,10 +70,13 @@ export default function LoginPage() {
       </Link>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Commissioner sign in</CardTitle>
+          <CardTitle className="text-xl">
+            {isInviteFlow ? "Sign in to claim your team" : "Commissioner sign in"}
+          </CardTitle>
           <CardDescription>
-            Only commissioners sign in. Everyone else views the league without
-            an account.
+            {isInviteFlow
+              ? "Sign in to link your account to your team."
+              : "Only commissioners sign in. Everyone else views the league without an account."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -100,9 +112,13 @@ export default function LoginPage() {
             </FieldGroup>
           </form>
           <p className="text-center text-sm text-muted-foreground">
-            Need a commissioner account?{" "}
+            {isInviteFlow ? "Need an account?" : "Need a commissioner account?"}{" "}
             <Link
-              href="/auth/sign-up"
+              href={
+                redirectTo
+                  ? `/auth/sign-up?redirect=${encodeURIComponent(redirectTo)}`
+                  : "/auth/sign-up"
+              }
               className="text-foreground underline underline-offset-4"
             >
               Sign up

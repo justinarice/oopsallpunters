@@ -11,6 +11,7 @@ import type {
   ScoringRule,
   StandingRow,
   Team,
+  TeamInvite,
   TradeView,
 } from "@/lib/types"
 
@@ -77,6 +78,33 @@ export async function getTeams(leagueId: string): Promise<Team[]> {
     .order("team_name")
   if (error) {
     console.error("[v0] getTeams error:", error.message)
+    return []
+  }
+  return data ?? []
+}
+
+/**
+ * Commissioner-only (see migration 0008 — team_invites has no public-select
+ * policy, since it holds bearer-token secrets). RLS returns an empty result
+ * rather than an error for anyone else calling this, matching the pattern
+ * of every other read in this file.
+ */
+export async function getTeamInvites(leagueId: string): Promise<TeamInvite[]> {
+  const supabase = await createClient()
+  const { data: teams } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("league_id", leagueId)
+  const teamIds = (teams ?? []).map((t) => t.id as string)
+  if (teamIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from("team_invites")
+    .select("*")
+    .in("team_id", teamIds)
+    .order("created_at", { ascending: false })
+  if (error) {
+    console.error("[v0] getTeamInvites error:", error.message)
     return []
   }
   return data ?? []

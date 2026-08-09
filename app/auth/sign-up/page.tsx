@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
@@ -44,6 +44,12 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const [redirectTo, setRedirectTo] = useState<string | null>(null)
+  useEffect(() => {
+    setRedirectTo(new URLSearchParams(window.location.search).get("redirect"))
+  }, [])
+  const isInviteFlow = redirectTo?.startsWith("/invite/") ?? false
+
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault()
     const supabase = createClient()
@@ -57,13 +63,18 @@ export default function SignUpPage() {
     }
 
     try {
+      const base =
+        process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+        `${window.location.origin}/auth/callback`
+      const emailRedirectTo = redirectTo
+        ? `${base}?next=${encodeURIComponent(redirectTo)}`
+        : base
+
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-            `${window.location.origin}/auth/callback`,
+          emailRedirectTo,
           data: { name },
         },
       })
@@ -83,9 +94,13 @@ export default function SignUpPage() {
       </Link>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Create commissioner account</CardTitle>
+          <CardTitle className="text-xl">
+            {isInviteFlow ? "Create an account" : "Create commissioner account"}
+          </CardTitle>
           <CardDescription>
-            Sign up to run a league. Members never need an account.
+            {isInviteFlow
+              ? "Sign up to claim your team. You'll confirm your email, then claim it."
+              : "Sign up to run a league. Members never need an account."}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -148,7 +163,11 @@ export default function SignUpPage() {
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
-              href="/auth/login"
+              href={
+                redirectTo
+                  ? `/auth/login?redirect=${encodeURIComponent(redirectTo)}`
+                  : "/auth/login"
+              }
               className="text-foreground underline underline-offset-4"
             >
               Sign in

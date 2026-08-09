@@ -23,8 +23,8 @@ export default function SignUpSuccessPage() {
           </div>
           <CardTitle className="text-xl">Confirm your email</CardTitle>
           <CardDescription>
-            We sent a confirmation link to your inbox. Click it to activate your
-            commissioner account, then sign in.
+            We sent a confirmation link to your inbox. Click it to confirm
+            your email — it'll take you right back to what you were doing.
           </CardDescription>
         </CardHeader>
         <CardContent>

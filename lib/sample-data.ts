@@ -55,6 +55,7 @@ const noSleeperIdentity = {
   sleeper_roster_id: null,
   sleeper_avatar: null,
   sleeper_display_name: null,
+  owner_user_id: null,
 }
 
 export const sampleTeams: Team[] = [

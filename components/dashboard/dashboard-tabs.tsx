@@ -8,6 +8,7 @@ import type {
   PunterWithOwner,
   ScoringRule,
   Team,
+  TeamInvite,
 } from "@/lib/types"
 import { SettingsSection } from "./settings-section"
 import { SleeperSection } from "./sleeper-section"
@@ -19,12 +20,14 @@ import { ImportSection } from "./import-section"
 export function DashboardTabs({
   league,
   teams,
+  teamInvites,
   punters,
   scoringRules,
   importHistory,
 }: {
   league: League
   teams: Team[]
+  teamInvites: TeamInvite[]
   punters: PunterWithOwner[]
   scoringRules: ScoringRule[]
   importHistory: ImportHistory[]
@@ -60,7 +63,7 @@ export function DashboardTabs({
       </TabsContent>
 
       <TabsContent value="teams" className="mt-6">
-        <TeamsSection leagueId={league.id} teams={teams} />
+        <TeamsSection leagueId={league.id} teams={teams} teamInvites={teamInvites} />
       </TabsContent>
 
       <TabsContent value="trades" className="mt-6">

@@ -66,6 +66,24 @@ export interface Team {
   sleeper_roster_id: number | null
   sleeper_avatar: string | null
   sleeper_display_name: string | null
+  /** Supabase auth user (via public.profiles) who claimed this team, if
+   *  any. Null = unclaimed — no owner has signed in and linked themselves
+   *  to this team yet. Set via claim_team_invite(), never directly. */
+  owner_user_id: string | null
+}
+
+/** A team-claim invite. team_invites is deliberately NOT public-readable
+ *  (see migration 0008) — this type is only ever populated from a
+ *  commissioner-scoped query or the get_invite_preview()/claim_team_invite()
+ *  RPCs, never from a public teams/leagues read. */
+export interface TeamInvite {
+  id: string
+  team_id: string
+  token: string
+  created_at: string
+  claimed_at: string | null
+  claimed_by_name: string | null
+  claimed_by_email: string | null
 }
 
 export interface Punter {
