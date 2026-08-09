@@ -13,7 +13,7 @@ import { parseCsv, type CsvRow } from "@/lib/csv"
 import { calculateFantasyPoints } from "@/lib/scoring"
 import type { ScoringRule, StatKey, WeeklyStats } from "@/lib/types"
 
-const STAT_KEYS: StatKey[] = [
+export const STAT_KEYS: StatKey[] = [
   "attempts",
   "gross_yards",
   "net_yards",
@@ -98,6 +98,10 @@ export interface ImportWeeklyStatsResult {
   matched: number
   unmatchedRows: string[]
   scoresWritten: number
+  /** True when this call skipped the expensive pull and scored this league
+   *  from weekly_stats rows another league already pulled this week. Only
+   *  ever set by the nflverse path. */
+  reuseExisting: boolean
 }
 
 /**
@@ -112,6 +116,12 @@ export interface ImportWeeklyStatsResult {
  *     most recent row per (week, player_id), so a correction naturally wins.
  *   - weekly_scores is unique on (league_id, week, punter_id), so re-imports
  *     update in place rather than double-counting standings.
+ *   - weekly_stats has no league_id column — it's shared across every
+ *     league in the app, since the real-world stat for a given player/week
+ *     doesn't depend on who's asking. reuseExisting lets a caller skip
+ *     re-inserting rows that another league already pulled for this exact
+ *     week (see importWeeklyStatsFromNflverse), so N leagues syncing the
+ *     same week only ever pay the fetch/parse/insert cost once.
  */
 export async function finalizeImport(
   ctx: CommishContext,
@@ -124,9 +134,23 @@ export async function finalizeImport(
     force: boolean
     matchedRows: MatchedStatRow[]
     unmatchedRows: string[]
+    /** True when matchedRows' stats were read back from weekly_stats rows
+     *  another league already inserted this week — skip the insert and go
+     *  straight to scoring them into THIS league. */
+    reuseExisting?: boolean
   },
 ): Promise<ActionResult<ImportWeeklyStatsResult>> {
-  const { leagueId, week, season, source, sourceHash, force, matchedRows, unmatchedRows } = params
+  const {
+    leagueId,
+    week,
+    season,
+    source,
+    sourceHash,
+    force,
+    matchedRows,
+    unmatchedRows,
+    reuseExisting = false,
+  } = params
 
   if (!force) {
     const { data: dupe } = await ctx.supabase
@@ -163,20 +187,22 @@ export async function finalizeImport(
   }
   const importId = importRow.id as string
 
-  const statInserts = matchedRows.map((r) => ({
-    week,
-    season,
-    player_id: r.playerId,
-    ...r.stats,
-    source_import_id: importId,
-  }))
-  const { error: statsError } = await ctx.supabase.from("weekly_stats").insert(statInserts)
-  if (statsError) {
-    await ctx.supabase
-      .from("import_history")
-      .update({ status: "failed", message: statsError.message })
-      .eq("id", importId)
-    return { ok: false, error: statsError.message }
+  if (!reuseExisting) {
+    const statInserts = matchedRows.map((r) => ({
+      week,
+      season,
+      player_id: r.playerId,
+      ...r.stats,
+      source_import_id: importId,
+    }))
+    const { error: statsError } = await ctx.supabase.from("weekly_stats").insert(statInserts)
+    if (statsError) {
+      await ctx.supabase
+        .from("import_history")
+        .update({ status: "failed", message: statsError.message })
+        .eq("id", importId)
+      return { ok: false, error: statsError.message }
+    }
   }
 
   const { data: rulesData } = await ctx.supabase
@@ -222,22 +248,31 @@ export async function finalizeImport(
     .from("import_history")
     .update({
       status: "success",
-      message: `${matchedRows.length} matched, ${unmatchedRows.length} unmatched`,
+      message: reuseExisting
+        ? `${matchedRows.length} matched, ${unmatchedRows.length} unmatched (reused stats already pulled this week)`
+        : `${matchedRows.length} matched, ${unmatchedRows.length} unmatched`,
     })
     .eq("id", importId)
 
   await logAction(
     ctx,
-    `Imported week ${week} stats via ${source === "nflverse" ? "nflverse" : "CSV upload"} (${matchedRows.length} punters, ${unmatchedRows.length} unmatched)`,
+    reuseExisting
+      ? `Scored week ${week} from stats already pulled via nflverse (${matchedRows.length} punters, ${unmatchedRows.length} unmatched)`
+      : `Imported week ${week} stats via ${source === "nflverse" ? "nflverse" : "CSV upload"} (${matchedRows.length} punters, ${unmatchedRows.length} unmatched)`,
     null,
-    { week, source, matched: matchedRows.length, unmatched: unmatchedRows },
+    { week, source, reuseExisting, matched: matchedRows.length, unmatched: unmatchedRows },
   )
 
   revalidatePath(`/league/${ctx.slug}`, "layout")
   revalidatePath("/dashboard")
   return {
     ok: true,
-    data: { matched: matchedRows.length, unmatchedRows, scoresWritten: scoreRows.length },
+    data: {
+      matched: matchedRows.length,
+      unmatchedRows,
+      scoresWritten: scoreRows.length,
+      reuseExisting,
+    },
   }
 }
 

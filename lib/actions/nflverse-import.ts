@@ -2,9 +2,18 @@
 
 import { createHash } from "node:crypto"
 import { z } from "zod"
-import { requireCommissioner, type ActionResult } from "@/lib/actions/guard"
+import {
+  requireCommissioner,
+  type ActionResult,
+  type CommishContext,
+} from "@/lib/actions/guard"
 import { forEachCsvRow } from "@/lib/csv"
-import { finalizeImport, type ImportWeeklyStatsResult, type MatchedStatRow } from "@/lib/actions/import"
+import {
+  finalizeImport,
+  STAT_KEYS,
+  type ImportWeeklyStatsResult,
+  type MatchedStatRow,
+} from "@/lib/actions/import"
 
 const PBP_BASE = "https://github.com/nflverse/nflverse-data/releases/download/pbp"
 
@@ -58,8 +67,98 @@ const schema = z.object({
   force: z.union([z.literal("true"), z.literal("false")]).default("false"),
 })
 
+interface ReusableWeekStats {
+  matchedRows: MatchedStatRow[]
+  unmatchedRows: string[]
+  sourceHash: string
+}
+
+/**
+ * weekly_stats has no league_id column — it's shared across every league in
+ * the app, since the real-world punt stat for a given player/week doesn't
+ * depend on which league is asking. If ANY league has already successfully
+ * pulled nflverse data for this exact (season, week), every other league
+ * should just read those rows back and score them, instead of re-fetching
+ * and re-parsing the same ~98MB file. Returns null when nothing's been
+ * pulled yet, so the caller falls through to the normal fetch.
+ */
+async function tryReuseGlobalNflversePull(
+  ctx: CommishContext,
+  season: string,
+  week: number,
+): Promise<ReusableWeekStats | null> {
+  // Deliberately NOT scoped by league_id — this is the whole point: any
+  // league's prior successful pull counts. import_history is public-select,
+  // so this sees every league's history, not just this commissioner's own.
+  const { data: priorImports } = await ctx.supabase
+    .from("import_history")
+    .select("id")
+    .eq("season", season)
+    .eq("week", week)
+    .eq("source", "nflverse")
+    .eq("status", "success")
+  const importIds = (priorImports ?? []).map((r) => r.id as string)
+  if (importIds.length === 0) return null
+
+  // Ordered oldest-first so that if a correction ever produced more than
+  // one row for the same player (shouldn't happen post-fix, since nothing
+  // re-inserts once this path exists, but defensively matches the same
+  // "most recent wins" convention used everywhere else weekly_stats is read
+  // — see getWeeklyResults in lib/queries.ts), the last one seen wins.
+  const { data: rows, error } = await ctx.supabase
+    .from("weekly_stats")
+    .select("*")
+    .eq("season", season)
+    .eq("week", week)
+    .in("source_import_id", importIds)
+    .order("created_at", { ascending: true })
+  if (error || !rows || rows.length === 0) return null
+
+  const byPlayerId = new Map<string, Record<string, unknown>>()
+  for (const row of rows) byPlayerId.set(row.player_id as string, row)
+
+  const { data: punters } = await ctx.supabase
+    .from("punters")
+    .select("id, player_id")
+  const punterIdByPlayerId = new Map(
+    (punters ?? []).map((p) => [p.player_id as string, p.id as string]),
+  )
+
+  const matchedRows: MatchedStatRow[] = []
+  const unmatchedRows: string[] = []
+  for (const [playerId, row] of byPlayerId) {
+    const punterId = punterIdByPlayerId.get(playerId)
+    if (!punterId) {
+      unmatchedRows.push(playerId)
+      continue
+    }
+    const stats: Record<string, number | null> = {}
+    for (const key of STAT_KEYS) stats[key] = (row[key] as number | null) ?? null
+    matchedRows.push({ punterId, playerId, stats })
+  }
+  if (matchedRows.length === 0) return null
+
+  // Same hashing approach as a fresh pull (see below) — hash the
+  // post-aggregation result so this league's own per-league dedupe check in
+  // finalizeImport still behaves sensibly.
+  const sourceHash = createHash("sha256")
+    .update(JSON.stringify(matchedRows.map((r) => [r.playerId, r.stats])))
+    .digest("hex")
+
+  return { matchedRows, unmatchedRows, sourceHash }
+}
+
 /**
  * Imports one week's punter stats from nflverse's play-by-play data.
+ *
+ * weekly_stats is shared across every league (no league_id column) since
+ * the real stat for a given player/week doesn't depend on who's asking —
+ * so before fetching anything, this checks whether ANY league has already
+ * successfully pulled nflverse data for this exact (season, week) and, if
+ * so, reuses it: this league gets scored from those existing rows without
+ * re-fetching or re-parsing the ~98MB file (see
+ * tryReuseGlobalNflversePull above). "Force re-import" skips that check and
+ * always does a fresh pull.
  *
  * There's no standalone punting table in nflverse — punting detail is
  * derived from filtering the full play-by-play feed to punt plays. The feed
@@ -102,6 +201,23 @@ export async function importWeeklyStatsFromNflverse(
       return { ok: false, error: leagueError?.message ?? "League not found." }
     }
     const season = leagueRow.season as string
+
+    if (!force) {
+      const reusable = await tryReuseGlobalNflversePull(ctx, season, week)
+      if (reusable) {
+        return finalizeImport(ctx, {
+          leagueId,
+          week,
+          season,
+          source: "nflverse",
+          sourceHash: reusable.sourceHash,
+          force: false,
+          matchedRows: reusable.matchedRows,
+          unmatchedRows: reusable.unmatchedRows,
+          reuseExisting: true,
+        })
+      }
+    }
 
     const url = `${PBP_BASE}/play_by_play_${season}.csv`
     let res: Response

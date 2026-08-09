@@ -46,11 +46,17 @@ function NflverseImportCard({ leagueId, season }: { leagueId: string; season: st
       if (res.ok && res.data) {
         setUnmatched(res.data.unmatchedRows)
         toast.success(
-          `Imported ${res.data.matched} punters from nflverse — ${res.data.scoresWritten} scores written${
-            res.data.unmatchedRows.length > 0
-              ? `, ${res.data.unmatchedRows.length} unmatched`
-              : ""
-          }.`,
+          res.data.reuseExisting
+            ? `Reused stats another league already pulled for this week — ${res.data.matched} punters, ${res.data.scoresWritten} scores written${
+                res.data.unmatchedRows.length > 0
+                  ? `, ${res.data.unmatchedRows.length} unmatched`
+                  : ""
+              }.`
+            : `Imported ${res.data.matched} punters from nflverse — ${res.data.scoresWritten} scores written${
+                res.data.unmatchedRows.length > 0
+                  ? `, ${res.data.unmatchedRows.length} unmatched`
+                  : ""
+              }.`,
         )
         setForce(false)
       } else if (!res.ok) {
@@ -106,8 +112,10 @@ function NflverseImportCard({ leagueId, season }: { leagueId: string; season: st
                 <label htmlFor="nflverseForce" className="text-sm">
                   <span className="font-medium">Force re-import</span>
                   <FieldDescription>
-                    Re-run even if this exact result was already imported for
-                    this week (use if nflverse corrected their data).
+                    Re-fetch fresh from nflverse instead of reusing any
+                    already-pulled data for this week — use if nflverse
+                    corrected their data, or this was already imported for
+                    this week and you want to redo it.
                   </FieldDescription>
                 </label>
               </div>
