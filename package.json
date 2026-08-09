@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:security": "node scripts/run-security-tests.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
