@@ -170,6 +170,98 @@ export async function updateLeagueSettings(
   }
 }
 
+const unlinkSchema = z.object({
+  leagueId: z.string().uuid(),
+})
+
+export interface UnlinkSleeperResult {
+  teamsCleared: number
+  pointsCleared: number
+}
+
+/**
+ * Unlinks this league from Sleeper. Clears the league's sleeper_league_id
+ * and each team's *derived* Sleeper identity (user_id, roster_id, avatar,
+ * display_name) — sleeper_username is left alone since it's the
+ * commissioner-entered lookup key, not something Sleeper resolved for us.
+ * Also purges cached sleeper_weekly_points for this league: those rows are
+ * keyed by roster_id, which is meaningless once unlinked and would be
+ * actively wrong if a future re-link points at a different Sleeper league,
+ * so standings should revert cleanly to punter-only scoring rather than
+ * keep showing a stale combined total.
+ *
+ * Fully reversible — re-linking re-resolves identities and re-syncing
+ * rebuilds the points cache from scratch.
+ */
+export async function unlinkSleeperLeague(input: {
+  leagueId: string
+}): Promise<ActionResult<UnlinkSleeperResult>> {
+  const parsed = unlinkSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: "Invalid request." }
+  const { leagueId } = parsed.data
+
+  try {
+    const ctx = await requireCommissioner(leagueId)
+
+    const { data: league, error: leagueFetchError } = await ctx.supabase
+      .from("leagues")
+      .select("sleeper_league_id")
+      .eq("id", leagueId)
+      .maybeSingle()
+    if (leagueFetchError) return { ok: false, error: leagueFetchError.message }
+    if (!league?.sleeper_league_id) {
+      return { ok: false, error: "This league isn't linked to Sleeper." }
+    }
+
+    const { data: clearedTeams, error: teamsError } = await ctx.supabase
+      .from("teams")
+      .update({
+        sleeper_user_id: null,
+        sleeper_roster_id: null,
+        sleeper_avatar: null,
+        sleeper_display_name: null,
+      })
+      .eq("league_id", leagueId)
+      .not("sleeper_user_id", "is", null)
+      .select("id")
+    if (teamsError) return { ok: false, error: teamsError.message }
+
+    const { data: clearedPoints, error: pointsError } = await ctx.supabase
+      .from("sleeper_weekly_points")
+      .delete()
+      .eq("league_id", leagueId)
+      .select("id")
+    if (pointsError) return { ok: false, error: pointsError.message }
+
+    const { error: leagueUpdateError } = await ctx.supabase
+      .from("leagues")
+      .update({
+        sleeper_league_id: null,
+        sleeper_last_synced_week: null,
+        sleeper_last_synced_at: null,
+        sleeper_unmatched_rosters: [],
+      })
+      .eq("id", leagueId)
+    if (leagueUpdateError) return { ok: false, error: leagueUpdateError.message }
+
+    const teamsCleared = clearedTeams?.length ?? 0
+    const pointsCleared = clearedPoints?.length ?? 0
+
+    await logAction(
+      ctx,
+      `Unlinked Sleeper league (${teamsCleared} team${teamsCleared === 1 ? "" : "s"} reset, ${pointsCleared} cached score row${pointsCleared === 1 ? "" : "s"} cleared)`,
+      { sleeper_league_id: league.sleeper_league_id },
+      { sleeper_league_id: null },
+    )
+
+    revalidatePath(`/league/${ctx.slug}`, "layout")
+    revalidatePath("/dashboard")
+    return { ok: true, data: { teamsCleared, pointsCleared } }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
 const linkSleeperSchema = z.object({
   leagueId: z.string().uuid(),
   sleeperLeagueId: z

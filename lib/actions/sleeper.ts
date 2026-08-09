@@ -3,7 +3,7 @@
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { withCommissioner, logAction, type ActionResult } from "./guard"
-import { getMatchups, getNflState } from "@/lib/sleeper"
+import { getMatchups, requireRegularSeasonStarted } from "@/lib/sleeper"
 
 const SyncSchema = z.object({
   leagueId: z.string().uuid(),
@@ -37,6 +37,9 @@ export async function syncSleeperScores(input: {
   const { leagueId, week: requestedWeek } = parsed.data
 
   return withCommissioner(leagueId, async (ctx) => {
+    const seasonCheck = await requireRegularSeasonStarted()
+    if (!seasonCheck.ok) return { ok: false, error: seasonCheck.error }
+
     const { data: league } = await ctx.supabase
       .from("leagues")
       .select("sleeper_league_id")
@@ -51,11 +54,7 @@ export async function syncSleeperScores(input: {
       }
     }
 
-    let week = requestedWeek
-    if (!week) {
-      const state = await getNflState()
-      week = state?.week ?? 1
-    }
+    const week = requestedWeek ?? seasonCheck.state.week
 
     const matchups = await getMatchups(sleeperLeagueId, week)
     if (!matchups) {
@@ -98,6 +97,24 @@ export async function syncSleeperScores(input: {
       .upsert(rows, { onConflict: "league_id,week,roster_id" })
     if (error) return { ok: false, error: error.message }
 
+    // Persist freshness + unmatched-roster status onto the league row so
+    // both survive a page refresh instead of only living in this action's
+    // return value / toast. Overwritten wholesale each sync — see migration
+    // 0007 for why that's the right behavior for unmatched rosters.
+    const { error: statusError } = await ctx.supabase
+      .from("leagues")
+      .update({
+        sleeper_last_synced_week: week,
+        sleeper_last_synced_at: new Date().toISOString(),
+        sleeper_unmatched_rosters: unmatchedRosters,
+      })
+      .eq("id", leagueId)
+    if (statusError) {
+      // The sync itself already succeeded and is safe to report as such —
+      // only the freshness/unmatched display would be stale, not the data.
+      console.error("[v0] sync status update failed:", statusError.message)
+    }
+
     await logAction(
       ctx,
       `Synced Sleeper scores for week ${week} (${rows.length} rosters, ${unmatchedRosters.length} unmatched)`,
@@ -106,6 +123,7 @@ export async function syncSleeperScores(input: {
     )
 
     revalidatePath(`/league/${ctx.slug}`, "layout")
+    revalidatePath("/dashboard")
     return {
       ok: true,
       data: { week, updated: rows.length, unmatchedRosters },
