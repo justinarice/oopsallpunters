@@ -26,6 +26,9 @@ export const sampleLeague: League = {
   logo_url: null,
   announcement: null,
   sleeper_league_id: null,
+  sleeper_last_synced_week: null,
+  sleeper_last_synced_at: null,
+  sleeper_unmatched_rosters: [],
   created_at: '2026-07-01T12:00:00Z',
 }
 
@@ -40,6 +43,9 @@ export const sampleLeagues: League[] = [
     logo_url: null,
     announcement: null,
     sleeper_league_id: null,
+    sleeper_last_synced_week: null,
+    sleeper_last_synced_at: null,
+    sleeper_unmatched_rosters: [],
     created_at: '2026-06-14T09:30:00Z',
   },
 ]

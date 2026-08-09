@@ -41,6 +41,12 @@ export interface League {
   announcement: string | null
   /** Sleeper's league_id when this league is linked. Null = unlinked. */
   sleeper_league_id: string | null
+  /** Week most recently synced via syncSleeperScores. Null = never synced. */
+  sleeper_last_synced_week: number | null
+  /** When that sync ran, for a "last synced X ago" indicator. */
+  sleeper_last_synced_at: string | null
+  /** Sleeper roster_ids that didn't match a local team as of that sync. */
+  sleeper_unmatched_rosters: number[]
   created_at: string
 }
 
