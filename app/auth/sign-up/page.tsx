@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { isSafeRedirect } from "@/lib/safe-redirect"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -66,7 +67,7 @@ export default function SignUpPage() {
       const base =
         process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
         `${window.location.origin}/auth/callback`
-      const emailRedirectTo = redirectTo
+      const emailRedirectTo = isSafeRedirect(redirectTo)
         ? `${base}?next=${encodeURIComponent(redirectTo)}`
         : base
 
@@ -164,7 +165,7 @@ export default function SignUpPage() {
             Already have an account?{" "}
             <Link
               href={
-                redirectTo
+                isSafeRedirect(redirectTo)
                   ? `/auth/login?redirect=${encodeURIComponent(redirectTo)}`
                   : "/auth/login"
               }

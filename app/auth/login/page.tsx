@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
+import { isSafeRedirect } from "@/lib/safe-redirect"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -50,7 +51,7 @@ export default function LoginPage() {
       // causing the middleware to bounce back to /auth/login (looks like a
       // hang, then requires a second sign-in attempt). A full navigation
       // guarantees the browser sends the fresh cookies with the request.
-      window.location.href = redirectTo || "/dashboard"
+      window.location.href = isSafeRedirect(redirectTo) ? redirectTo : "/dashboard"
     } catch (err: unknown) {
       console.error("[v0] Login error:", err)
       const { code } = (err ?? {}) as { code?: string }
@@ -115,7 +116,7 @@ export default function LoginPage() {
             {isInviteFlow ? "Need an account?" : "Need a commissioner account?"}{" "}
             <Link
               href={
-                redirectTo
+                isSafeRedirect(redirectTo)
                   ? `/auth/sign-up?redirect=${encodeURIComponent(redirectTo)}`
                   : "/auth/sign-up"
               }
