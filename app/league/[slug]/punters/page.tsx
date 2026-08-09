@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { Card } from "@/components/ui/card"
 import { PuntersTable, type PunterRow } from "@/components/punters-table"
 import { createClient } from "@/lib/supabase/server"
@@ -7,6 +8,24 @@ import {
   getPuntersWithOwners,
   getStandings,
 } from "@/lib/queries"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) return {}
+
+  return {
+    title: `Punters — ${league.name}`,
+    description: `The full NFL punter catalog for ${league.name}, with season stats and fantasy points.`,
+    alternates: {
+      canonical: `/league/${slug}/punters`,
+    },
+  }
+}
 
 export default async function PuntersPage({
   params,

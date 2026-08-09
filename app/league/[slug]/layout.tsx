@@ -1,8 +1,27 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { Badge } from '@/components/ui/badge'
 import { SiteHeader } from '@/components/site-header'
 import { LeagueNav } from '@/components/league-nav'
 import { getLeagueBySlug } from '@/lib/queries'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) return {}
+
+  return {
+    title: league.name,
+    description: `Live punter standings, trades, weekly imports, and scoring rules for ${league.name} (${league.season} season) — a Sleeper companion league.`,
+    alternates: {
+      canonical: `/league/${slug}`,
+    },
+  }
+}
 
 export default async function LeagueLayout({
   children,

@@ -61,7 +61,9 @@ export default function LoginPage() {
       </Link>
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Commissioner sign in</CardTitle>
+          <CardTitle asChild className="text-xl">
+            <h1>Commissioner sign in</h1>
+          </CardTitle>
           <CardDescription>
             Only commissioners sign in. Everyone else views the league without
             an account.

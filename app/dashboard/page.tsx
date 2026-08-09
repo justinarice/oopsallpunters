@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { Metadata } from "next"
 import { Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -17,6 +18,19 @@ import { LeaguePicker } from "@/components/dashboard/league-picker"
 // every Server Action invoked from this route segment, which is where the
 // nflverse import (fetches/parses a ~98MB file) actually gets called from.
 export const maxDuration = 300
+
+export const metadata: Metadata = {
+  title: 'Commissioner dashboard',
+  description:
+    'Manage teams, punter assignments, scoring rules, and weekly stat imports for your Sleeper punter league.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+  alternates: {
+    canonical: '/dashboard',
+  },
+}
 
 export default async function DashboardPage({
   searchParams,

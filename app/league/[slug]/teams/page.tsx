@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import type { Metadata } from 'next'
 import { AtSign } from 'lucide-react'
 import {
   Card,
@@ -10,6 +11,24 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { getLeagueBySlug, getStandings } from '@/lib/queries'
 import { formatPoints } from '@/lib/format'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) return {}
+
+  return {
+    title: `Teams — ${league.name}`,
+    description: `Every team in ${league.name}, its owner, current punter, and season points.`,
+    alternates: {
+      canonical: `/league/${slug}/teams`,
+    },
+  }
+}
 
 export default async function TeamsPage({
   params,

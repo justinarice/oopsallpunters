@@ -6,11 +6,30 @@ import {
   Flag,
   Lock,
 } from 'lucide-react'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { getAuditLog, getLeagueBySlug } from '@/lib/queries'
 import { formatDateTime } from '@/lib/format'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const league = await getLeagueBySlug(slug)
+  if (!league) return {}
+
+  return {
+    title: `Transactions — ${league.name}`,
+    description: `The complete public audit log for ${league.name} — every commissioner action, newest first.`,
+    alternates: {
+      canonical: `/league/${slug}/transactions`,
+    },
+  }
+}
 
 function iconFor(action: string) {
   const a = action.toLowerCase()
