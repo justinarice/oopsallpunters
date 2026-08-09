@@ -223,3 +223,66 @@ export interface PunterWithOwner {
   punter: Punter
   ownerTeam: Team | null
 }
+
+// ---------------------------------------------------------------------------
+// Punter draft (v1: one punter per team, one fixed round — see migration
+// 0012_punter_draft.sql for the full data-model rationale).
+// ---------------------------------------------------------------------------
+
+export type DraftStatus = 'not_started' | 'in_progress' | 'paused' | 'complete'
+
+/** Config, rarely written. Split from DraftState so the live pointer can be
+ *  written every pick without touching this row. */
+export interface DraftSettings {
+  league_id: string
+  pick_seconds: number
+  /** Ordered team ids — a permutation of this league's teams. Empty until
+   *  randomized. current_pick_number in DraftState indexes directly into
+   *  this array (1-based). */
+  team_order: string[]
+  status: DraftStatus
+}
+
+/** The live pointer, written on every pick and every clock resolution.
+ *  Null fields mean "no draft in progress" (not_started) or "draft over"
+ *  (complete) — callers should check DraftSettings.status rather than
+ *  inferring state from nullness alone. */
+export interface DraftState {
+  league_id: string
+  current_pick_number: number | null
+  current_team_id: string | null
+  /** When the CURRENT pick's clock expires. Drives both the client-side
+   *  countdown and resolve_draft_clock's timeout check. */
+  pick_deadline: string | null
+}
+
+/** Deliberately kept flat (not joined with team/punter) — this is also the
+ *  exact shape a Realtime postgres_changes payload for this table delivers,
+ *  so the draft board can merge live inserts in without a re-fetch, resolving
+ *  team/punter client-side against the (already-loaded) teams/punters lists. */
+export interface DraftPick {
+  id: string
+  league_id: string
+  pick_number: number
+  team_id: string
+  punter_id: string
+  picked_at: string
+  auto_drafted: boolean
+}
+
+/** One row of an owner's autodraft queue for their team. */
+export interface DraftQueueEntry {
+  id: string
+  league_id: string
+  team_id: string
+  punter_id: string
+  priority: number
+}
+
+/** A queue entry joined with its punter, ordered by priority, for the owner
+ *  queue-management UI. */
+export interface DraftQueueEntryView {
+  id: string
+  punter: Punter
+  priority: number
+}

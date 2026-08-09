@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server"
 import type {
   AssignmentView,
   AuditLogEntry,
+  DraftPick,
+  DraftQueueEntryView,
+  DraftSettings,
+  DraftState,
   ImportHistory,
   League,
   Punter,
@@ -457,4 +461,93 @@ export async function getPuntersWithOwners(
     punter,
     ownerTeam: ownerByPunter.get(punter.id) ?? null,
   }))
+}
+
+// ---------------------------------------------------------------------------
+// Punter draft reads. All public-select (see migration 0012) — anyone can
+// watch a draft, not just participants.
+// ---------------------------------------------------------------------------
+
+/** Null when the commissioner hasn't configured a draft yet — callers should
+ *  treat that the same as { pick_seconds: 90, team_order: [], status:
+ *  'not_started' } rather than an error. */
+export async function getDraftSettings(
+  leagueId: string,
+): Promise<DraftSettings | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("draft_settings")
+    .select("*")
+    .eq("league_id", leagueId)
+    .maybeSingle()
+  if (error) {
+    console.error("[v0] getDraftSettings error:", error.message)
+    return null
+  }
+  return data
+}
+
+/** Null before a draft has ever started (no draft_state row yet). */
+export async function getDraftState(leagueId: string): Promise<DraftState | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("draft_state")
+    .select("*")
+    .eq("league_id", leagueId)
+    .maybeSingle()
+  if (error) {
+    console.error("[v0] getDraftState error:", error.message)
+    return null
+  }
+  return data
+}
+
+/** All picks made so far, oldest first. Kept flat (see DraftPick's comment
+ *  in lib/types.ts) — the draft board resolves team/punter client-side. */
+export async function getDraftPicks(leagueId: string): Promise<DraftPick[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("draft_picks")
+    .select("*")
+    .eq("league_id", leagueId)
+    .order("pick_number", { ascending: true })
+  if (error) {
+    console.error("[v0] getDraftPicks error:", error.message)
+    return []
+  }
+  return data ?? []
+}
+
+/** Punters not yet drafted in this league, for the picker + queue UI. Active
+ *  punters only — an inactive punter can't be drafted (mirrors assign_punter's
+ *  rule in 0003_roster_rpcs.sql). */
+export async function getAvailablePunters(leagueId: string): Promise<Punter[]> {
+  const [punters, picks] = await Promise.all([getPunters(), getDraftPicks(leagueId)])
+  const drafted = new Set(picks.map((p) => p.punter_id))
+  return punters.filter((p) => p.active && !drafted.has(p.id))
+}
+
+/** A team's autodraft queue, ordered by priority and joined with punter info. */
+export async function getDraftQueue(
+  leagueId: string,
+  teamId: string,
+): Promise<DraftQueueEntryView[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("draft_queues")
+    .select("id, priority, punters(*)")
+    .eq("league_id", leagueId)
+    .eq("team_id", teamId)
+    .order("priority", { ascending: true })
+  if (error) {
+    console.error("[v0] getDraftQueue error:", error.message)
+    return []
+  }
+  return (data ?? [])
+    .filter((r) => r.punters)
+    .map((r) => ({
+      id: r.id as string,
+      priority: r.priority as number,
+      punter: r.punters as unknown as Punter,
+    }))
 }

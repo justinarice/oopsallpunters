@@ -9,6 +9,8 @@ import {
   getPuntersWithOwners,
   getScoringRules,
   getImportHistory,
+  getDraftSettings,
+  getDraftState,
 } from "@/lib/queries"
 import { CreateLeague } from "@/components/dashboard/create-league"
 import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
@@ -64,13 +66,15 @@ export default async function DashboardPage({
   const league =
     leagues.find((l) => l.slug === requestedSlug) ?? leagues[0]
 
-  const [teams, teamInvites, punters, scoringRules, importHistory] =
+  const [teams, teamInvites, punters, scoringRules, importHistory, draftSettings, draftState] =
     await Promise.all([
       getTeams(league.id),
       getTeamInvites(league.id),
       getPuntersWithOwners(league.id),
       getScoringRules(league.id),
       getImportHistory(league.id),
+      getDraftSettings(league.id),
+      getDraftState(league.id),
     ])
 
   return (
@@ -108,6 +112,8 @@ export default async function DashboardPage({
         punters={punters}
         scoringRules={scoringRules}
         importHistory={importHistory}
+        draftSettings={draftSettings}
+        draftState={draftState}
       />
     </div>
   )

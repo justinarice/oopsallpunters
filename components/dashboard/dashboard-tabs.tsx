@@ -1,8 +1,10 @@
 "use client"
 
-import { FileUp, Repeat, Settings2, Sliders, Users } from "lucide-react"
+import { Flag, FileUp, Repeat, Settings2, Sliders, Users } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type {
+  DraftSettings,
+  DraftState,
   ImportHistory,
   League,
   PunterWithOwner,
@@ -16,6 +18,7 @@ import { TeamsSection } from "./teams-section"
 import { RosterSection } from "./roster-section"
 import { ScoringSection } from "./scoring-section"
 import { ImportSection } from "./import-section"
+import { DraftSection } from "./draft-section"
 
 export function DashboardTabs({
   league,
@@ -24,6 +27,8 @@ export function DashboardTabs({
   punters,
   scoringRules,
   importHistory,
+  draftSettings,
+  draftState,
 }: {
   league: League
   teams: Team[]
@@ -31,6 +36,8 @@ export function DashboardTabs({
   punters: PunterWithOwner[]
   scoringRules: ScoringRule[]
   importHistory: ImportHistory[]
+  draftSettings: DraftSettings | null
+  draftState: DraftState | null
 }) {
   return (
     <Tabs defaultValue="settings">
@@ -46,6 +53,10 @@ export function DashboardTabs({
         <TabsTrigger value="trades">
           <Repeat data-icon="inline-start" />
           Roster
+        </TabsTrigger>
+        <TabsTrigger value="draft">
+          <Flag data-icon="inline-start" />
+          Draft
         </TabsTrigger>
         <TabsTrigger value="scoring">
           <Sliders data-icon="inline-start" />
@@ -68,6 +79,16 @@ export function DashboardTabs({
 
       <TabsContent value="trades" className="mt-6">
         <RosterSection leagueId={league.id} teams={teams} punters={punters} />
+      </TabsContent>
+
+      <TabsContent value="draft" className="mt-6">
+        <DraftSection
+          leagueId={league.id}
+          leagueSlug={league.slug}
+          teams={teams}
+          draftSettings={draftSettings}
+          draftState={draftState}
+        />
       </TabsContent>
 
       <TabsContent value="scoring" className="mt-6">
