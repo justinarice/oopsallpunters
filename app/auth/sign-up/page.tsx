@@ -95,7 +95,7 @@ export default function SignUpPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">
-            {isInviteFlow ? "Create an account" : "Create commissioner account"}
+            {isInviteFlow ? "Create an account" : <h1>Create commissioner account</h1>}
           </CardTitle>
           <CardDescription>
             {isInviteFlow

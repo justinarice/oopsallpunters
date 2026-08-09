@@ -71,7 +71,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">
-            {isInviteFlow ? "Sign in to claim your team" : "Commissioner sign in"}
+            {isInviteFlow ? "Sign in to claim your team" : <h1>Commissioner sign in</h1>}
           </CardTitle>
           <CardDescription>
             {isInviteFlow
