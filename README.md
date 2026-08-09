@@ -6,6 +6,17 @@ It is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-FFDD00?style=flat-square)](https://buymeacoffee.com/justinrice)
 
+## How It Works
+
+Oops All Punters combines your Sleeper league with NFL punting statistics to create a fantasy scoring experience focused entirely on punters.
+
+1. **Connect your Sleeper league** — The app reads public league data from Sleeper to identify your league and its teams.
+2. **Pull NFL statistics** — Player and game statistics are sourced from [nflverse](https://github.com/nflverse), specifically the [nflverse-data](https://github.com/nflverse/nflverse-data) repository.
+3. **Calculate punter fantasy scores** — Punting statistics are converted into fantasy points using the league's punter-specific scoring rules.
+4. **Track the competition** — Scores and rankings let you see how your punters are performing throughout the season.
+
+The goal is simple: **take the most undervalued positions in fantasy football and make it valued.**
+
 ## Data Sources & Attribution
 
 NFL player and statistical data used by Oops All Punters is provided by the [nflverse](https://github.com/nflverse) project, specifically the [nflverse-data](https://github.com/nflverse/nflverse-data) repository.
