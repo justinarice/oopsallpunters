@@ -12,6 +12,8 @@ import {
   getLeague as getSleeperLeague,
   getLeagueRosters,
   getLeagueUsers,
+  getUser as getSleeperUser,
+  getUserLeagues,
 } from "@/lib/sleeper"
 
 const slugify = (s: string) =>
@@ -257,6 +259,81 @@ export async function unlinkSleeperLeague(input: {
     revalidatePath(`/league/${ctx.slug}`, "layout")
     revalidatePath("/dashboard")
     return { ok: true, data: { teamsCleared, pointsCleared } }
+  } catch (e) {
+    return { ok: false, error: (e as Error).message }
+  }
+}
+
+const discoverSchema = z.object({
+  leagueId: z.string().uuid(),
+  sleeperUsername: z.string().trim().min(1, "Enter a Sleeper username."),
+})
+
+export interface DiscoveredSleeperLeague {
+  sleeperLeagueId: string
+  name: string
+  avatar: string | null
+  totalRosters: number
+  status: string
+}
+
+/**
+ * Looks up every Sleeper league a username belongs to for this league's
+ * season, so a commissioner can pick one instead of copy-pasting a league
+ * ID out of a Sleeper URL. Read-only — this never links anything itself,
+ * it just returns candidates for the existing link form to fill in and the
+ * commissioner to review before submitting (getUserLeagues existed in
+ * lib/sleeper.ts already but had no caller until now).
+ */
+export async function discoverSleeperLeagues(input: {
+  leagueId: string
+  sleeperUsername: string
+}): Promise<ActionResult<DiscoveredSleeperLeague[]>> {
+  const parsed = discoverSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message }
+  const { leagueId, sleeperUsername } = parsed.data
+
+  try {
+    const ctx = await requireCommissioner(leagueId)
+
+    const { data: league, error: leagueError } = await ctx.supabase
+      .from("leagues")
+      .select("season")
+      .eq("id", leagueId)
+      .maybeSingle()
+    if (leagueError) return { ok: false, error: leagueError.message }
+    if (!league) return { ok: false, error: "League not found." }
+
+    const sleeperUser = await getSleeperUser(sleeperUsername)
+    if (!sleeperUser) {
+      return {
+        ok: false,
+        error: `No Sleeper user found for username "${sleeperUsername}".`,
+      }
+    }
+
+    const sleeperLeagues = await getUserLeagues(
+      sleeperUser.user_id,
+      league.season as string,
+      "nfl",
+    )
+    if (!sleeperLeagues || sleeperLeagues.length === 0) {
+      return {
+        ok: false,
+        error: `${sleeperUsername} has no Sleeper leagues for the ${league.season} season.`,
+      }
+    }
+
+    return {
+      ok: true,
+      data: sleeperLeagues.map((l) => ({
+        sleeperLeagueId: l.league_id,
+        name: l.name,
+        avatar: l.avatar,
+        totalRosters: l.total_rosters,
+        status: l.status,
+      })),
+    }
   } catch (e) {
     return { ok: false, error: (e as Error).message }
   }
