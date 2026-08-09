@@ -170,6 +170,34 @@ export function getNflState(): Promise<SleeperNflState | null> {
   return sleeperGet<SleeperNflState>(`/state/nfl`)
 }
 
+/**
+ * Guards score syncing to the NFL regular season. Sleeper's preseason
+ * matchups (mock/scrimmage) aren't real fantasy scoring — pulling them by
+ * accident (e.g. via syncSleeperScores' "default to current week" behavior)
+ * would write bogus points into sleeper_weekly_points under a real week
+ * number, showing up on public standings until someone notices and re-syncs.
+ * Returns the fetched state on success so callers get it for free instead of
+ * fetching /state/nfl twice.
+ */
+export async function requireRegularSeasonStarted(): Promise<
+  { ok: true; state: SleeperNflState } | { ok: false; error: string }
+> {
+  const state = await getNflState()
+  if (!state) {
+    return {
+      ok: false,
+      error: "Couldn't reach Sleeper to check whether the season has started.",
+    }
+  }
+  if (state.season_type === "pre") {
+    return {
+      ok: false,
+      error: `The ${state.season} NFL season is still in preseason — score syncing opens once Week 1 of the regular season begins.`,
+    }
+  }
+  return { ok: true, state }
+}
+
 /** Full avatar image URL for a Sleeper avatar id. Re-exported here for
  *  convenience in server code; see lib/sleeper-avatar.ts for the
  *  client-safe original (this file is server-only). */
