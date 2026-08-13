@@ -13,8 +13,12 @@ const uuid = z.string().uuid()
 function rpcMessage(message: string | undefined): string {
   const map: Record<string, string> = {
     not_authenticated: "You must be signed in to draft.",
+    not_authorized: "You are not the commissioner of this league.",
     draft_not_active: "The draft isn't currently active.",
     not_your_turn: "It's not your team's turn to pick.",
+    punter_not_found: "That punter could not be found.",
+    punter_inactive: "That punter is inactive and cannot be drafted.",
+    team_already_has_punter: "That team already has a punter — release it before drafting another.",
     punter_already_drafted: "That punter has already been drafted.",
     pick_already_made: "Your team's pick was already made — refresh to see it.",
   }
@@ -34,6 +38,72 @@ async function leagueSlug(
     .eq("id", leagueId)
     .maybeSingle()
   return (data?.slug as string) ?? null
+}
+
+async function punterName(supabase: SupabaseClient, punterId: string): Promise<string> {
+  const { data } = await supabase.from("punters").select("name").eq("id", punterId).single()
+  return (data?.name as string) ?? "Unknown punter"
+}
+
+async function teamName(supabase: SupabaseClient, teamId: string): Promise<string> {
+  const { data } = await supabase.from("teams").select("team_name").eq("id", teamId).single()
+  return (data?.team_name as string) ?? "Unknown team"
+}
+
+/**
+ * make_draft_pick allows the commissioner to pick on behalf of a stalled
+ * team, and that path IS a commissioner mutation (unlike a plain owner
+ * making their own pick, which can't write audit_log under RLS anyway — see
+ * the module note below). Writes the audit entry only when the acting user
+ * is actually this league's commissioner, matching guard.ts's "every
+ * commissioner mutation MUST call logAction" rule.
+ */
+async function logIfCommissionerPick(
+  supabase: SupabaseClient,
+  leagueId: string,
+  pickId: string | null,
+): Promise<void> {
+  if (!pickId) return
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: league } = await supabase
+    .from("leagues")
+    .select("slug, commissioner_id")
+    .eq("id", leagueId)
+    .maybeSingle()
+  if (!league || league.commissioner_id !== user.id) return
+
+  const { data: pick } = await supabase
+    .from("draft_picks")
+    .select("team_id, punter_id")
+    .eq("id", pickId)
+    .maybeSingle()
+  if (!pick) return
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("name")
+    .eq("id", user.id)
+    .maybeSingle()
+  const actorName =
+    (profile?.name as string | null) ??
+    (user.user_metadata?.name as string | undefined) ??
+    "Commissioner"
+
+  const [pName, tName] = await Promise.all([
+    punterName(supabase, pick.punter_id as string),
+    teamName(supabase, pick.team_id as string),
+  ])
+
+  await logAction(
+    { supabase, userId: user.id, actorName, leagueId, slug: league.slug as string },
+    `Drafted ${pName} for ${tName}`,
+    null,
+    { team_id: pick.team_id, punter_id: pick.punter_id },
+  )
 }
 
 /** Fisher-Yates. Used for "randomize order" — the only v1 draft-order UI. */
@@ -310,7 +380,7 @@ export async function resetDraft(input: { leagueId: string }): Promise<ActionRes
   return withCommissioner(leagueId, async (ctx) => {
     const { data: picks } = await ctx.supabase
       .from("draft_picks")
-      .select("punter_id")
+      .select("pick_number, team_id, punter_id, auto_drafted")
       .eq("league_id", leagueId)
     const punterIds = (picks ?? []).map((p) => p.punter_id as string)
 
@@ -345,6 +415,8 @@ export async function resetDraft(input: { leagueId: string }): Promise<ActionRes
     await logAction(
       ctx,
       `Reset the draft (${punterIds.length} pick${punterIds.length === 1 ? "" : "s"} undone)`,
+      { picks: picks ?? [] },
+      null,
     )
 
     revalidatePath(`/league/${ctx.slug}`, "layout")
@@ -354,15 +426,15 @@ export async function resetDraft(input: { leagueId: string }): Promise<ActionRes
 }
 
 // ---------------------------------------------------------------------------
-// Thin RPC wrappers — called by anyone on the public draft board, not just
-// the commissioner, so these deliberately do NOT go through withCommissioner.
-// Authorization lives entirely in the RPCs themselves (migration 0012).
-//
-// Neither writes to audit_log: audit_log's INSERT policy is commissioner-only
-// (see guard.ts / 0001_init.sql), which a plain owner's pick couldn't satisfy
-// anyway, and the draft board itself — draft_picks, publicly readable and
-// Realtime-broadcast — is already the public record of who picked what and
-// when, satisfying the same "every action is public" principle.
+// makeDraftPick — called by anyone on the public draft board, not just the
+// commissioner, so it deliberately does NOT go through withCommissioner.
+// Authorization lives entirely in the RPC itself (migration 0012): the
+// on-the-clock team's own owner, or the commissioner picking on their
+// behalf. Only the latter is a commissioner mutation and gets audit-logged
+// (logIfCommissionerPick, above) — a plain owner's own pick can't write
+// audit_log under RLS anyway, and the draft board itself (draft_picks,
+// publicly readable and Realtime-broadcast) is already that pick's public
+// record, satisfying the same "every action is public" principle.
 // ---------------------------------------------------------------------------
 
 const MakePickSchema = z.object({ leagueId: uuid, punterId: uuid })
@@ -376,11 +448,13 @@ export async function makeDraftPick(input: {
   const { leagueId, punterId } = parsed.data
 
   const supabase = await createClient()
-  const { error } = await supabase.rpc("make_draft_pick", {
+  const { data: pickId, error } = await supabase.rpc("make_draft_pick", {
     p_league_id: leagueId,
     p_punter_id: punterId,
   })
   if (error) return { ok: false, error: rpcMessage(error.message) }
+
+  await logIfCommissionerPick(supabase, leagueId, pickId as string | null)
 
   const slug = await leagueSlug(supabase, leagueId)
   if (slug) revalidatePath(`/league/${slug}`, "layout")
@@ -390,10 +464,12 @@ export async function makeDraftPick(input: {
 
 const ResolveClockSchema = z.object({ leagueId: uuid })
 
-/** Called on an interval by every open draft-board tab (see the client board
- *  component) — no auth required, matching resolve_draft_clock's anon +
- *  authenticated grant. This is what makes the pick timeout actually happen
- *  without a cron job (see CLAUDE.md principle 3). */
+/** Resolves an expired pick clock by auto-drafting for the stalled team.
+ *  Commissioner-only (CLAUDE.md principle 3 — "the commissioner initiates
+ *  every state change" rules out firing this from a passive client timer),
+ *  and only ever called from an explicit "Resolve pick" button click in the
+ *  board UI, never from the polling loop. Every call is a commissioner
+ *  mutation, so a successful resolve is always audit-logged. */
 export async function resolveDraftClock(input: {
   leagueId: string
 }): Promise<ActionResult<{ resolved: boolean }>> {
@@ -401,19 +477,47 @@ export async function resolveDraftClock(input: {
   if (!parsed.success) return { ok: false, error: "Invalid request." }
   const { leagueId } = parsed.data
 
-  const supabase = await createClient()
-  const { data, error } = await supabase.rpc("resolve_draft_clock", {
-    p_league_id: leagueId,
-  })
-  if (error) return { ok: false, error: rpcMessage(error.message) }
+  return withCommissioner(leagueId, async (ctx) => {
+    const { data: state } = await ctx.supabase
+      .from("draft_state")
+      .select("current_pick_number")
+      .eq("league_id", leagueId)
+      .maybeSingle()
+    const pickNumber = (state?.current_pick_number as number | null) ?? null
 
-  const resolved = data === true
-  if (resolved) {
-    const slug = await leagueSlug(supabase, leagueId)
-    if (slug) revalidatePath(`/league/${slug}`, "layout")
-    revalidatePath("/dashboard")
-  }
-  return { ok: true, data: { resolved } }
+    const { data, error } = await ctx.supabase.rpc("resolve_draft_clock", {
+      p_league_id: leagueId,
+    })
+    if (error) return { ok: false, error: rpcMessage(error.message) }
+
+    const resolved = data === true
+    if (resolved && pickNumber != null) {
+      const { data: pick } = await ctx.supabase
+        .from("draft_picks")
+        .select("team_id, punter_id")
+        .eq("league_id", leagueId)
+        .eq("pick_number", pickNumber)
+        .maybeSingle()
+      if (pick) {
+        const [pName, tName] = await Promise.all([
+          punterName(ctx.supabase, pick.punter_id as string),
+          teamName(ctx.supabase, pick.team_id as string),
+        ])
+        await logAction(
+          ctx,
+          `Resolved the expired pick clock: auto-drafted ${pName} for ${tName}`,
+          null,
+          { team_id: pick.team_id, punter_id: pick.punter_id },
+        )
+      }
+    }
+
+    if (resolved) {
+      revalidatePath(`/league/${ctx.slug}`, "layout")
+      revalidatePath("/dashboard")
+    }
+    return { ok: true, data: { resolved } }
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -439,6 +543,15 @@ export async function addToDraftQueue(input: {
   const { leagueId, teamId, punterId } = parsed.data
 
   const supabase = await createClient()
+
+  const { data: punter } = await supabase
+    .from("punters")
+    .select("active")
+    .eq("id", punterId)
+    .maybeSingle()
+  if (!punter || punter.active === false) {
+    return { ok: false, error: "That punter isn't available to draft." }
+  }
 
   const { data: existing } = await supabase
     .from("draft_queues")

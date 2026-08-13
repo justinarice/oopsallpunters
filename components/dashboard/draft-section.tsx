@@ -139,8 +139,8 @@ export function DraftSection({
         </div>
         <CardDescription>
           One punter per team, drafted live in a single fixed round. Nothing
-          resolves in the background — every open draft-board tab keeps the
-          clock moving, and every pick is public.
+          resolves automatically — if a pick&apos;s clock runs out, you
+          resolve it yourself from the live board, and every pick is public.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

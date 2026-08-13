@@ -13,11 +13,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
 
-// Client poll interval. This is what makes pick timeouts actually resolve
-// without a cron job (see CLAUDE.md principle 3 + migration 0012) — every
-// open tab calls resolve_draft_clock on this cadence. It also fully resyncs
-// settings/state/picks each tick as a fallback for Realtime, which can drop
-// a connection silently.
+// Client poll interval. Purely a read-only resync of settings/state/picks —
+// a fallback for Realtime, which can drop a connection silently. Resolving
+// an expired pick clock is never done on a timer (CLAUDE.md principle 3 —
+// "the commissioner initiates every state change"): it only happens when
+// the commissioner clicks "Resolve pick" below.
 const POLL_MS = 4000
 
 const STATUS_LABEL: Record<string, string> = {
@@ -149,11 +149,8 @@ export function DraftBoard({
 
     async function tick() {
       if (document.visibilityState !== "visible") return
-      const s = await resync()
       if (cancelled) return
-      if (s?.status === "in_progress") {
-        await resolveDraftClock({ leagueId })
-      }
+      await resync()
     }
 
     tick()
@@ -171,6 +168,17 @@ export function DraftBoard({
       const res = await makeDraftPick({ leagueId, punterId })
       if (res.ok) toast.success("Pick submitted.")
       else if (res.error) toast.error(res.error)
+    })
+  }
+
+  const [resolving, startResolving] = useTransition()
+  function onResolveClock() {
+    startResolving(async () => {
+      const res = await resolveDraftClock({ leagueId })
+      if (!res.ok) toast.error(res.error)
+      else if (res.data?.resolved) toast.success("Pick clock resolved.")
+      else toast.message("The clock hasn't expired yet.")
+      await resync()
     })
   }
 
@@ -251,6 +259,25 @@ export function DraftBoard({
                       ? `Pick on behalf of ${onClockTeam.team_name}`
                       : "Make your pick"}
                   </p>
+                  {isCommissioner && msRemaining <= 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed border-amber-500/50 bg-amber-500/5 px-3 py-2">
+                      <p className="text-sm text-muted-foreground">
+                        This pick&apos;s clock has run out. You can pick
+                        below, or resolve it from {onClockTeam.team_name}
+                        &apos;s queue (or a random available punter if
+                        empty).
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={resolving}
+                        onClick={onResolveClock}
+                      >
+                        {resolving && <Spinner data-icon="inline-start" />}
+                        Resolve pick
+                      </Button>
+                    </div>
+                  )}
                   <div className="relative">
                     <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
@@ -282,8 +309,10 @@ export function DraftBoard({
                 </div>
               ) : (
                 <p className="border-t border-border pt-4 text-sm text-muted-foreground">
-                  Waiting for {onClockTeam.team_name} to pick. If the clock
-                  runs out, an available punter is auto-drafted for them.
+                  Waiting for {onClockTeam.team_name} to pick.
+                  {msRemaining <= 0
+                    ? " The clock has run out — waiting for the commissioner to resolve it."
+                    : " If the clock runs out, the commissioner can auto-draft from their queue."}
                 </p>
               )}
             </div>

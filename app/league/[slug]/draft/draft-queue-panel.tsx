@@ -98,9 +98,9 @@ export function DraftQueuePanel({
           <CardTitle>Your draft queue</CardTitle>
         </div>
         <CardDescription>
-          Rank punters ahead of time. If your pick&apos;s clock runs out,
-          the top available punter here gets auto-drafted for you — set
-          this up any time before or during the draft.
+          Rank punters ahead of time. If your pick&apos;s clock runs out and
+          the commissioner resolves it, the top available punter here gets
+          drafted for you — set this up any time before or during the draft.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

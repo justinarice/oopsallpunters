@@ -82,10 +82,12 @@ create index if not exists draft_queues_team_priority_idx
 --
 -- draft_settings/draft_state/draft_picks writes are commissioner-gated via
 -- is_commissioner() for the setup/admin actions (configure, start, pause,
--- reset). The actual pick-making and autodraft paths never go through this
+-- reset). The pick-making and clock-resolution paths never go through this
 -- policy at all — they go through the two SECURITY DEFINER RPCs below, which
 -- run as the function owner and so bypass RLS entirely, exactly like
--- assign_punter bypasses a plain RLS write path on roster_assignments.
+-- assign_punter bypasses a plain RLS write path on roster_assignments. Both
+-- RPCs re-check authorization themselves (make_draft_pick: the on-the-clock
+-- owner or the commissioner; resolve_draft_clock: commissioner only).
 --
 -- draft_queues is different: it's an owner managing their own team's data,
 -- with no cross-user mutation and no race to guard against, so it's safe as
@@ -190,6 +192,32 @@ begin
     raise exception 'not_your_turn';
   end if;
 
+  -- Punter must exist and be active — mirrors assign_punter's rule
+  -- (0003_roster_rpcs.sql) so a drafted punter is held to the same bar as
+  -- one assigned through the roster tab.
+  declare
+    v_punter_active boolean;
+  begin
+    select p.active into v_punter_active from public.punters p where p.id = p_punter_id;
+    if v_punter_active is null then
+      raise exception 'punter_not_found';
+    end if;
+    if v_punter_active = false then
+      raise exception 'punter_inactive';
+    end if;
+  end;
+
+  -- The on-the-clock team must not already hold an active punter. Nothing
+  -- stops the commissioner from calling assign_punter on this team mid-draft
+  -- (assign_punter has no reason to know a draft is running), so re-check
+  -- here rather than relying solely on startDraft's one-time precondition.
+  if exists (
+    select 1 from public.roster_assignments ra
+    where ra.league_id = p_league_id and ra.team_id = v_team_id and ra.ended_at is null
+  ) then
+    raise exception 'team_already_has_punter';
+  end if;
+
   -- Explicit pre-check for a clean error message — the INSERT's unique
   -- constraint below is the real guard under concurrency, this just avoids
   -- surfacing a raw constraint-violation message in the common case.
@@ -239,12 +267,14 @@ $$;
 grant execute on function public.make_draft_pick(uuid, uuid) to authenticated;
 
 -- ============================================================================
--- resolve_draft_clock — lazy timeout resolution. No cron, ever (see
--- CLAUDE.md principle 3): every open draft-board tab polls this on an
--- interval, so whichever caller's clock ticks past pick_deadline first
--- resolves it. Granted to anon too — the more clients checking, the better,
--- since the whole point is keeping the draft moving with nobody privileged
--- necessarily watching.
+-- resolve_draft_clock — resolves an expired pick clock by auto-drafting for
+-- the stalled team. NOT automatic: CLAUDE.md principle 3 ("the commissioner
+-- initiates every state change") rules out firing this off a client-side
+-- timer for anyone who happens to have a tab open, so it's commissioner-only
+-- and only ever called from an explicit "Resolve pick" button click (see
+-- draft-board.tsx) — never from the polling loop. The commissioner could
+-- always just draft manually on the stalled team's behalf instead; this RPC
+-- exists only so their explicit "resolve" click can honor the team's queue.
 -- ============================================================================
 
 create or replace function public.resolve_draft_clock(p_league_id uuid)
@@ -254,6 +284,7 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_uid uuid := auth.uid();
   v_team_id uuid;
   v_pick_number int;
   v_deadline timestamptz;
@@ -264,6 +295,13 @@ declare
   v_new_pick_id uuid;
   v_next_pick_number int;
 begin
+  if not exists (
+    select 1 from public.leagues l
+    where l.id = p_league_id and l.commissioner_id = v_uid
+  ) then
+    raise exception 'not_authorized';
+  end if;
+
   select ds.current_team_id, ds.current_pick_number, ds.pick_deadline
     into v_team_id, v_pick_number, v_deadline
   from public.draft_state ds
@@ -283,11 +321,13 @@ begin
   end if;
 
   -- Autopick: the on-the-clock team's queue in priority order, first entry
-  -- not already drafted in this league.
+  -- that's still active and not already drafted in this league.
   select dq.punter_id into v_punter_id
   from public.draft_queues dq
+  join public.punters p on p.id = dq.punter_id
   where dq.league_id = p_league_id
     and dq.team_id = v_team_id
+    and p.active = true
     and not exists (
       select 1 from public.draft_picks dp
       where dp.league_id = p_league_id and dp.punter_id = dq.punter_id
@@ -325,9 +365,11 @@ begin
     return false;
   end;
 
-  -- assigned_by is null: this is a system-triggered autopick, not a specific
-  -- user's action, and this RPC may run with no authenticated caller at all
-  -- (it's granted to anon).
+  -- assigned_by is null: the queue/random pick was never a specific person's
+  -- decision, even though the commissioner is the one who triggered
+  -- resolving it (v_uid, checked above) — that's why this whole action gets
+  -- audit-logged by the caller (resolveDraftClock) rather than attributed
+  -- here the way make_draft_pick attributes to v_uid.
   insert into public.roster_assignments (league_id, team_id, punter_id, assigned_by)
   values (p_league_id, v_team_id, v_punter_id, null);
 
@@ -349,13 +391,14 @@ begin
 end;
 $$;
 
-grant execute on function public.resolve_draft_clock(uuid) to anon, authenticated;
+grant execute on function public.resolve_draft_clock(uuid) to authenticated;
 
 -- ============================================================================
--- Realtime — first use in this app. Supplements, not replaces, the client
--- polling above (resolve_draft_clock): Realtime can drop a connection, so
+-- Realtime — first use in this app. Supplements, not replaces, the client's
+-- plain resync polling (draft-board.tsx): Realtime can drop a connection, so
 -- polling is what guarantees eventual consistency even if a broadcast is
--- missed.
+-- missed. (Only the read-only resync is on a timer — resolving an expired
+-- pick clock always requires an explicit commissioner click.)
 -- ============================================================================
 
 do $$
