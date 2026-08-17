@@ -45,6 +45,7 @@ export default async function LeagueLayout({
               {league.name}
             </h1>
             <Badge variant="secondary">{league.season} Season</Badge>
+            {!league.is_public && <Badge variant="outline">Private</Badge>}
           </div>
           <LeagueNav slug={slug} />
         </div>

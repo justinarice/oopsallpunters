@@ -26,8 +26,8 @@ const FEATURES = [
   },
   {
     icon: Eye,
-    title: 'Fully public & auditable',
-    body: 'Everyone can view everything without logging in. Every commissioner action is permanently recorded in the audit log.',
+    title: 'Public or private, your call',
+    body: 'Commissioners choose whether a league is open for anyone to view or restricted to the commissioner and team owners. Either way, every commissioner action is permanently recorded in the audit log.',
   },
 ]
 
@@ -105,7 +105,8 @@ export default async function HomePage() {
           <div className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6">
             <h2 className="text-xl font-semibold tracking-tight">Leagues</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Public read access — no account required.
+              Public leagues are listed here for anyone to view. Private
+              leagues are visible only to their commissioner and team owners.
             </p>
             {leagues.length === 0 ? (
               <Empty className="mt-6 rounded-lg border border-dashed border-border">
@@ -130,7 +131,12 @@ export default async function HomePage() {
                     <CardHeader>
                       <div className="flex items-center justify-between gap-2">
                         <CardTitle>{league.name}</CardTitle>
-                        <Badge variant="secondary">{league.season}</Badge>
+                        <div className="flex items-center gap-1.5">
+                          {!league.is_public && (
+                            <Badge variant="outline">Private</Badge>
+                          )}
+                          <Badge variant="secondary">{league.season}</Badge>
+                        </div>
                       </div>
                       <CardDescription>
                         /league/{league.slug}

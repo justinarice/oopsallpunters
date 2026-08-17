@@ -115,9 +115,10 @@ const settingsSchema = z.object({
     .trim()
     .regex(/^\d{4}$/, "Season must be a 4-digit year."),
   announcement: z.string().trim().max(1000).optional().or(z.literal("")),
+  visibility: z.enum(["public", "private"]),
 })
 
-/** Update league name / season / announcement. */
+/** Update league name / season / announcement / visibility. */
 export async function updateLeagueSettings(
   _prev: ActionResult | null,
   formData: FormData,
@@ -127,18 +128,20 @@ export async function updateLeagueSettings(
     name: formData.get("name"),
     season: formData.get("season"),
     announcement: formData.get("announcement") ?? "",
+    visibility: formData.get("visibility"),
   })
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0].message }
   }
-  const { leagueId, name, season, announcement } = parsed.data
+  const { leagueId, name, season, announcement, visibility } = parsed.data
+  const isPublic = visibility === "public"
 
   try {
     const ctx = await requireCommissioner(leagueId)
 
     const { data: before } = await ctx.supabase
       .from("leagues")
-      .select("name, season, announcement")
+      .select("name, season, announcement, is_public")
       .eq("id", leagueId)
       .maybeSingle()
 
@@ -147,7 +150,7 @@ export async function updateLeagueSettings(
 
     const { error } = await ctx.supabase
       .from("leagues")
-      .update({ name, season, announcement: nextAnnouncement })
+      .update({ name, season, announcement: nextAnnouncement, is_public: isPublic })
       .eq("id", leagueId)
     if (error) return { ok: false, error: error.message }
 
@@ -156,12 +159,13 @@ export async function updateLeagueSettings(
     if (before?.season !== season) changes.push("season")
     if ((before?.announcement ?? null) !== nextAnnouncement)
       changes.push("announcement")
+    if (before?.is_public !== isPublic) changes.push("visibility")
 
     await logAction(
       ctx,
       `Updated league settings (${changes.join(", ") || "no changes"})`,
       before ?? null,
-      { name, season, announcement: nextAnnouncement },
+      { name, season, announcement: nextAnnouncement, is_public: isPublic },
     )
 
     revalidatePath(`/league/${ctx.slug}`, "layout")

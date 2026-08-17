@@ -39,6 +39,10 @@ export interface League {
   commissioner_id: string
   logo_url: string | null
   announcement: string | null
+  /** Public leagues are visible to anyone; private leagues are visible only
+   *  to the commissioner and the owners of the league's teams. Defaults to
+   *  false (private) for every new league. */
+  is_public: boolean
   /** Sleeper's league_id when this league is linked. Null = unlinked. */
   sleeper_league_id: string | null
   /** Week most recently synced via syncSleeperScores. Null = never synced. */
